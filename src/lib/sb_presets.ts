@@ -1,7 +1,7 @@
 /**
 @fileOverview Cyber Blues Presets Library V1.5 — "Deep Attenuation".
 #ЗАЧЕМ: Снижение громкости гитар Muff и Shine еще в 2 раза для Cyber Blues.
-#ОБНОВЛЕНО (ПЛАН №2970): Укорачивание хвостов пэдов в 2 раза.
+#ОБНОВЛЕНО (ПЛАН №3040): Подтверждение "зубастых" тембров и добавление сатурации для Rhodes.
 */
 export const SB_PRESETS = {
 // ───── PADS & SYNTHS (Dynamic Group: dynamicPad) ─────
@@ -18,7 +18,7 @@ noise: { on: true, gain: 0.04 },
 adsr: { a: 0.005, d: 0.4, s: 0.8, r: 0.4 },
 lpf: { cutoff: 4200, q: 4.5 },
 lfo: { rate: 2.5, amount: 1200, target: 'filter' },
-drive: { type: 'fuzz', amount: 0.75 },
+drive: { type: 'fuzz', amount: 0.82 }, // Maximized fuzz
 reverbMix: 0.08
 },
 synth_ambient_pad_lush: {
@@ -33,7 +33,7 @@ osc: [
 adsr: { a: 0.8, d: 1.5, s: 0.85, r: 1.0 },
 lpf: { cutoff: 1200, q: 2.5 },
 lfo: { rate: 0.3, amount: 600, target: 'filter' },
-drive: { type: 'soft', amount: 0.55 },
+drive: { type: 'fuzz', amount: 0.65 }, // Grittier pad
 reverbMix: 0.15
 },
 synth_cave_pad: {
@@ -47,7 +47,7 @@ osc: [
 ],
 adsr: { a: 1.5, d: 2.5, s: 0.9, r: 1.75 },
 lpf: { cutoff: 600, q: 3.0 },
-drive: { type: 'fuzz', amount: 0.65 },
+drive: { type: 'fuzz', amount: 0.75 }, // Heavier fuzz
 reverbMix: 0.25
 },
 // ───── ORGANS (Dynamic Group: dynamicOrgan) ─────
@@ -82,7 +82,7 @@ reverbMix: 0.08
 },
 organ_prog: {
 type: 'synth',
-name: 'Cyber Prog B3',
+name: 'Cyber Progression B3',
 volume: 0.56,
 osc: [
 { type: 'sine', octave: 0, detune: 0, gain: 0.55 },
@@ -124,10 +124,10 @@ drive: { type: 'fuzz', amount: 0.65 }
 guitar_shineOn: {
 type: 'guitar',
 name: 'Cyber Shine Lead',
-volume: 0.17, // Снижено еще в 2 раза (всего 4x)
+volume: 0.17,
 osc: { width: 0.5 },
-drive: { type: 'muff', amount: 0.7 },
-post: { lpf: 3800 },
+drive: { type: 'muff', amount: 0.82 }, // Increased drive
+  post: { lpf: 3800 },
 adsr: { a: 0.015, d: 0.6, s: 0.7, r: 2.2 },
 delay: { time: 0.35, fb: 0.25, mix: 0.18 },
 reverbMix: 0.05,
@@ -139,10 +139,10 @@ calibrationTrimDb: 4.5
 guitar_muffLead: {
 type: 'guitar',
 name: 'Cyber Muff Lead',
-volume: 0.18, // Снижено еще в 2 раза (всего 4x)
+volume: 0.18,
 osc: { width: 0.6 },
-drive: { type: 'muff', amount: 0.85 },
-post: { lpf: 3000 },
+drive: { type: 'muff', amount: 0.95 }, // Maximized drive
+  post: { lpf: 3000 },
 adsr: { a: 0.018, d: 0.7, s: 0.65, r: 2.8 },
 delay: { time: 0.28, fb: 0.2, mix: 0.15 },
 reverbMix: 0.04,
@@ -162,6 +162,6 @@ osc: [
 adsr: { a: 0.008, d: 0.35, s: 0.65, r: 0.5 },
 lpf: { cutoff: 2000, q: 1.2 },
 reverbMix: 0.05,
-drive: { type: 'soft', amount: 0.45 }
+drive: { type: 'soft', amount: 0.55 } // Added more grit to Rhodes
 }
 };

@@ -1,7 +1,7 @@
 /**
  * @fileOverview Foundry Presets Library V2.3 — "Deep Attenuation".
  * #ЗАЧЕМ: Снижение громкости Muff и Shine еще в 2 раза для индастриал-микса.
- * #ОБНОВЛЕНО (ПЛАН №2970): Укорачивание хвостов пэдов в 2 раза.
+ * #ОБНОВЛЕНО (ПЛАН №3040): Усиление "грязи" — переход на Fuzz для пэдов и усиление перегруза органов.
  */
 
 export const FOUNDRY_PRESETS = {
@@ -17,7 +17,7 @@ export const FOUNDRY_PRESETS = {
     adsr: { a: 0.15, d: 0.4, s: 0.5, r: 0.32 }, 
     lpf: { cutoff: 2200, q: 1.5 }, 
     lfo: { rate: 0.4, amount: 600, target: 'filter' },
-    drive: { type: 'soft', amount: 0.35 },
+    drive: { type: 'fuzz', amount: 0.55 }, // Changed soft -> fuzz for industrial grit
     reverbMix: 0.08
   },
 
@@ -32,7 +32,7 @@ export const FOUNDRY_PRESETS = {
     adsr: { a: 0.8, d: 1.2, s: 0.6, r: 0.6 }, 
     lpf: { cutoff: 950, q: 1.2 }, 
     lfo: { rate: 0.1, amount: 200, target: 'filter' },
-    drive: { type: 'soft', amount: 0.18 },
+    drive: { type: 'fuzz', amount: 0.35 }, // Added grit
     reverbMix: 0.12
   },
 
@@ -44,7 +44,7 @@ export const FOUNDRY_PRESETS = {
     adsr: { a: 0.05, d: 0.1, s: 0.85, r: 0.45 }, 
     lpf: 3200,
     reverbMix: 0.08,
-    drive: { type: 'soft', amount: 0.55 },
+    drive: { type: 'soft', amount: 0.75 }, // Increased drive for "growl"
     leslie: { rate: 5.8, pitchDepth: 0.00005, ampDepth: 0.06, driftPct: 0.12, driftRate: 0.2 },
     humanize: { detuneCents: 2.0, levelPct: 0.05, brightnessPct: 0.08 }
   },
@@ -57,7 +57,7 @@ export const FOUNDRY_PRESETS = {
     lpf: 2400,
     adsr: { a: 0.03, d: 0.1, s: 0.7, r: 0.4 }, 
     reverbMix: 0.08,
-    drive: { type: 'soft', amount: 0.35 },
+    drive: { type: 'soft', amount: 0.45 }, // Increased
     leslie: { rate: 5.2, pitchDepth: 0.00005, ampDepth: 0.04, driftPct: 0.15, driftRate: 0.15 },
     humanize: { detuneCents: 2.0, levelPct: 0.05, brightnessPct: 0.06 }
   },
@@ -76,9 +76,9 @@ export const FOUNDRY_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.03, // Снижено еще в 2 раза (всего 4x)
+    volume: 0.03,
     osc: { width: 0.46 },
-    drive: { type: 'soft', amount: 0.30 },
+    drive: { type: 'muff', amount: 0.55 }, // Switched soft -> muff for industrial lead
     post: { lpf: 5000 }, 
     adsr: { a: 0.020, d: 0.30, s: 0.6, r: 1.5 }, 
     delay: { time: 0.42, fb: 0.28, mix: 0.18 },
@@ -92,9 +92,9 @@ export const FOUNDRY_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead (Warm Grit)',
-    volume: 0.02, // Снижено еще в 2 раза (всего 4x)
+    volume: 0.02,
     osc: { width: 0.45 },
-    drive: { type: 'muff', amount: 0.55 },
+    drive: { type: 'muff', amount: 0.65 }, // Increased drive
     post: { lpf: 4200 },
     adsr: { a: 0.020, d: 0.4, s: 0.55, r: 1.0 }, 
     delay: { time: 0.30, fb: 0.18, mix: 0.10 },
@@ -116,7 +116,7 @@ export const FOUNDRY_PRESETS = {
     ],
     adsr: { a: 1.5, d: 2.5, s: 0.9, r: 1.75 },
     lpf: { cutoff: 600, q: 3.0 },
-    drive: { type: 'fuzz', amount: 0.65 },
+    drive: { type: 'fuzz', amount: 0.75 }, // Heavier fuzz
     reverbMix: 0.25
   },
 
