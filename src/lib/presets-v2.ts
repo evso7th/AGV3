@@ -2,6 +2,7 @@
 // #ОБНОВЛЕНО (ПЛАН №9.0): Внедрение физической модели гитары.
 // #ОБНОВЛЕНО (ПЛАН №2660): Восстановление длинных хвостов для Ambient.
 // #ОБНОВЛЕНО (ПЛАН №2960): Снижение громкости Muff и Shine еще в 2 раза (всего в 4 раза).
+// #ОБНОВЛЕНО (ПЛАН №2970): Укорачивание хвостов пэдов в 2 раза.
 
 import { BASS_PRESETS } from './bass-presets';
 import { FOUNDRY_PRESETS } from './foundry-presets';
@@ -21,7 +22,7 @@ export const V2_PRESETS = {
       { type: 'sine', detune: 0, octave: -1, gain: 0.3 }
     ],
     noise: { on: true, gain: 0.012 },
-    adsr: { a: 0.8, d: 1.2, s: 0.6, r: 2.5 }, 
+    adsr: { a: 0.8, d: 1.2, s: 0.6, r: 1.25 }, 
     lpf: { cutoff: 950, q: 0.8 }, 
     reverbMix: 0
   },
@@ -35,7 +36,7 @@ export const V2_PRESETS = {
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.3 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.4 }
     ],
-    adsr: { a: 2.0, d: 2.5, s: 0.6, r: 4.0 }, 
+    adsr: { a: 2.0, d: 2.5, s: 0.6, r: 2.0 }, 
     lpf: { cutoff: 650, q: 0.7 }, 
     reverbMix: 0
   },

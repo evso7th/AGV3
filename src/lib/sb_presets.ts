@@ -1,6 +1,7 @@
 /**
 @fileOverview Cyber Blues Presets Library V1.5 — "Deep Attenuation".
 #ЗАЧЕМ: Снижение громкости гитар Muff и Shine еще в 2 раза для Cyber Blues.
+#ОБНОВЛЕНО (ПЛАН №2970): Укорачивание хвостов пэдов в 2 раза.
 */
 export const SB_PRESETS = {
 // ───── PADS & SYNTHS (Dynamic Group: dynamicPad) ─────
@@ -14,7 +15,7 @@ osc: [
 { type: 'square', detune: 0, octave: -2, gain: 0.4 }
 ],
 noise: { on: true, gain: 0.04 },
-adsr: { a: 0.005, d: 0.4, s: 0.8, r: 0.8 },
+adsr: { a: 0.005, d: 0.4, s: 0.8, r: 0.4 },
 lpf: { cutoff: 4200, q: 4.5 },
 lfo: { rate: 2.5, amount: 1200, target: 'filter' },
 drive: { type: 'fuzz', amount: 0.75 },
@@ -29,7 +30,7 @@ osc: [
 { type: 'sawtooth', detune: +8, octave: -1, gain: 0.55 },
 { type: 'square', detune: 0, octave: -2, gain: 0.45 }
 ],
-adsr: { a: 0.8, d: 1.5, s: 0.85, r: 2.0 },
+adsr: { a: 0.8, d: 1.5, s: 0.85, r: 1.0 },
 lpf: { cutoff: 1200, q: 2.5 },
 lfo: { rate: 0.3, amount: 600, target: 'filter' },
 drive: { type: 'soft', amount: 0.55 },
@@ -44,7 +45,7 @@ osc: [
 { type: 'square', detune: 15, octave: -2, gain: 0.6 },
 { type: 'sine', detune: 0, octave: -3, gain: 0.9 }
 ],
-adsr: { a: 1.5, d: 2.5, s: 0.9, r: 3.5 },
+adsr: { a: 1.5, d: 2.5, s: 0.9, r: 1.75 },
 lpf: { cutoff: 600, q: 3.0 },
 drive: { type: 'fuzz', amount: 0.65 },
 reverbMix: 0.25
