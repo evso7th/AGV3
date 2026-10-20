@@ -1,8 +1,11 @@
 // V2 Presets — Compatible with buildMultiInstrument()
 // #ОБНОВЛЕНО (ПЛАН №9.0): Внедрение физической модели гитары.
 // #ОБНОВЛЕНО (ПЛАН №2660): Восстановление длинных хвостов для Ambient.
+// #ОБНОВЛЕНО (ПЛАН №2870): Внедрен UNIFIED_V2_REGISTRY для устранения Registry Blindness.
 
 import { BASS_PRESETS } from './bass-presets';
+import { FOUNDRY_PRESETS } from './foundry-presets';
+import { SB_PRESETS } from './sb_presets';
 
 export const V2_PRESETS = {
   // ═══════════════════════════════════════════════════════════════════════════
@@ -126,10 +129,19 @@ export const V2_PRESETS = {
   }
 } as const;
 
+/**
+ * #ЗАЧЕМ: ПЛАН №2870. Единый реестр всех V2-пресетов для всех жанров.
+ */
+export const UNIFIED_V2_REGISTRY: Record<string, any> = {
+    ...V2_PRESETS,
+    ...FOUNDRY_PRESETS,
+    ...SB_PRESETS
+};
+
 export type PresetName = keyof typeof V2_PRESETS;
 export type PresetConfig = typeof V2_PRESETS[PresetName];
 
-export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
+export const V1_TO_V2_PRESET_MAP: Record<string, string> = {
     synth: 'synth',
     organ: 'organ',
     electricGuitar: 'guitar_shineOn',
@@ -149,8 +161,9 @@ export const BASS_PRESET_MAP: Record<string, string> = {
     linkRiff: 'bass_house'
 };
 
-export function getPreset(name: string): PresetConfig {
-    if (name in V2_PRESETS) return V2_PRESETS[name as PresetName];
-    if (name in V1_TO_V2_PRESET_MAP) return V2_PRESETS[V1_TO_V2_PRESET_MAP[name]];
-    return V2_PRESETS.synth;
+export function getPreset(name: string): any {
+    const mapped = V1_TO_V2_PRESET_MAP[name] || name;
+    if (mapped in UNIFIED_V2_REGISTRY) return UNIFIED_V2_REGISTRY[mapped];
+    if (mapped in BASS_PRESETS) return BASS_PRESETS[mapped as keyof typeof BASS_PRESETS];
+    return UNIFIED_V2_REGISTRY.synth;
 }
