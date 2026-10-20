@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V15.1 — "Factory Gain Refinement".
- * #ЗАЧЕМ: Реализация ПЛАНА №2960. Снижение базового усиления мелодии в 2 раза.
+ * @fileOverview Центральная фабрика инструментов V15.2 — "Deterministic Gain State".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3050. Устранение всплесков при инициализации GainNode.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -21,10 +21,9 @@ const STEAL_PRIORITY: Record<string, number> = {
     'pianoAccompaniment': 4 
 };
 
-// #ЗАЧЕМ: ПЛАН №2960. Снижение базового баланса для LEAD-канала.
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.95, // Закреплено в предыдущих правках
-  melody: 0.1125, // Снижено с 0.225
+  bass: 0.95,
+  melody: 0.1125, 
   accompaniment: 0.30, 
   drums: 0.65,
   sparkles: 0.65,
@@ -358,7 +357,10 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const instrumentId = `inst_${Math.random().toString(36).substr(2, 9)}`;
     let currentPreset = { ...preset };
     const instrumentGain = ctx.createGain();
-    instrumentGain.gain.value = isFinite(currentPreset.volume) ? currentPreset.volume : 0.7;
+    
+    // #ЗАЧЕМ: ПЛАН №3050. Детерминированная установка громкости.
+    const initialVol = isFinite(currentPreset.volume) ? currentPreset.volume : 0.7;
+    instrumentGain.gain.setValueAtTime(initialVol, ctx.currentTime);
     
     const bus = ctx.createGain();
     const panner = ctx.createStereoPanner();

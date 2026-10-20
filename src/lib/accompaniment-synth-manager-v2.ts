@@ -1,6 +1,6 @@
 /**
- * @fileOverview Accompaniment Synth Manager V2.4 — "Unified Registry Adoption".
- * #ЗАЧЕМ: ПЛАН №2870 — Использование UNIFIED_V2_REGISTRY для поддержки всех жанровых пресетов.
+ * @fileOverview Accompaniment Synth Manager V2.5 — "Cold Start Protection".
+ * #ЗАЧЕМ: ПЛАН №3050 — Снижение начального преампа до 0.1 для исключения всплесков громкости.
  */
 import type { FractalEvent } from '@/types/fractal';
 import type { PlayableNote as Note } from "@/types/music";
@@ -35,7 +35,8 @@ export class AccompanimentSynthManagerV2 {
         this.blackAcousticSampler = blackAcousticSampler;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.0;
+        // #ЗАЧЕМ: ПЛАН №3050. Стартуем тихо (0.1) до первой калибровки.
+        this.preamp.gain.value = 0.1;
         this.preamp.connect(this.destination);
     }
 

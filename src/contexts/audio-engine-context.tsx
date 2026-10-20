@@ -1,6 +1,7 @@
 /**
- * @fileOverview Audio Engine Context V84.1 — "Platform-aware Auto-bridge".
- * #ЗАЧЕМ: Реализация ПЛАНА №2810. Автозапуск моста при нажатии Play ТОЛЬКО для мобильных устройств.
+ * @fileOverview Audio Engine Context V85.0 — "Cruel Volume Control".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3050. Устранение всплесков громкости при смене тембров.
+ * #ЧТО: Унификация преампов менеджеров и сэмплеров + принудительная синхронизация микшера.
  */
 'use client';
 
@@ -30,8 +31,8 @@ import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.5,
-  melody: 0.225, 
+  bass: 0.95,
+  melody: 0.1125, 
   accompaniment: 0.30, 
   drums: 0.65,
   sparkles: 0.65,
@@ -42,13 +43,13 @@ const VOICE_BALANCE: Record<string, number> = {
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 0.75, 
-    acoustic: 0.05, 
-    electric: 0.825, 
+    acoustic: 0.15, 
+    electric: 0.15, 
     piano: 0.2, 
     orchecial: 0.5, 
     chords: 1.2,
     bass: 1.0,
-    cs80: 0.6
+    cs80: 0.4
 };
 
 interface AudioEngineContextType {
@@ -176,6 +177,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
   const pianoAccompanimentManagerRef = useRef<PianoAccompanimentManager | null>(null);
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
+  const sparklePreampRef = useRef<GainNode | null>(null);
   const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
   const blackGuitarSamplerRef = useRef<BlackGuitarSampler | null>(null);
   const telecasterSamplerRef = useRef<TelecasterGuitarSampler | null>(null);
@@ -235,13 +237,22 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           masterGainNodeRef.current.gain.setTargetAtTime(m, now, 0.05);
       }
       
-      blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * (gains.acoustic || 1.0));
-      telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * (gains.electric || 1.0));
-      darkTelecasterSamplerRef.current?.setPreampGain(2.2 * (gains.electric || 1.0)); 
+      const electricBase = gains.electric || 1.0;
+      const acousticBase = gains.acoustic || 1.0;
+      const pianoBase = gains.piano || 1.0;
+      const bassBase = gains.bass || 1.0;
+
+      blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * acousticBase);
+      telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * electricBase);
+      darkTelecasterSamplerRef.current?.setPreampGain(2.2 * electricBase); 
       iCs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * (gains.cs80 || 1.0));
-      melodyManagerV2Ref.current?.setPreampGain(gains.electric || 1.0); 
-      bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
-      pianoAccompanimentManagerRef.current?.setVolume(gains.piano || 1.0); 
+      
+      // #ЗАЧЕМ: ПЛАН №3050. Синхронизация преампов менеджеров.
+      melodyManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.electric * electricBase); 
+      accompanimentManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.piano * pianoBase);
+      bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * bassBase);
+      
+      pianoAccompanimentManagerRef.current?.setVolume(pianoBase); 
       
       harmonyManagerRef.current?.setPreampGains(
           SAMPLER_DEFAULTS.orchecial * (gains.orchestral || 1.0),
@@ -287,8 +298,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
               masterGainNodeRef.current.gain.setTargetAtTime(calibrationGainsRef.current.master, context.currentTime, 0.05); 
           }
           
-          // #ЗАЧЕМ: ПЛАН №2810. Автозапуск медиа-моста.
-          // #ЧТО: Ограничено только мобильными устройствами для системных виджетов.
           if (isMobile) {
               if (broadcastEngineRef.current && !broadcastEngineRef.current.isActive()) {
                   triggerStreamPulse();
@@ -315,7 +324,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           workerRef.current.postMessage({ command: 'stop' }); 
           stopAllSounds(); 
 
-          // #ЗАЧЕМ: ПЛАН №2810. Остановка моста при общем Стопе.
           if (broadcastEngineRef.current?.isActive()) {
               broadcastEngineRef.current.stop();
               speakerGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05);
@@ -563,7 +571,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (dnaSourcePreference === 'network' && typeof navigator !== 'undefined' && navigator.onLine) await refreshCloudAxioms();
         else { const i = await loadDnaFromCache(); if (!i) void refreshCloudAxioms(); }
         
+        // #ЗАЧЕМ: ПЛАН №3050. Жесткая синхронизация после инициализации.
         applyCalibration(calibrationGainsRef.current);
+        
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
         return true;
     } catch (e) { setIsInitializing(false); initializationInFlightRef.current = false; return false; }
