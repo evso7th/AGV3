@@ -1,8 +1,8 @@
 /**
-@fileOverview Cyber Blues Brain V1.6 — "Rhythmic Power Protocol".
-#ЗАЧЕМ: 1. Протокол "Золотой Ноты" для аккомпанемента (0,3,6,9).
-      2. Sparkle Lock-out: окно 16 секунд для предотвращения наложений.
-      3. Принудительные Power Chords для чистоты дисторшна.
+@fileOverview Cyber Blues Brain V1.7 — "Subtle Rhythm Evolution".
+#ЗАЧЕМ: ПЛАН №2930. 1. Locked 4/4 Foundation (0,3,6,9).
+      2. Heritage Percussion Filter (Scavenging).
+      3. Tension-based Ghost Variety.
 */
 import {
   FractalEvent,
@@ -87,6 +87,7 @@ export class CyberBluesBrain {
   private currentPreferredInstrument: string | null = null;
   private currentBassAxiom: any[] = [];
   private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
+  private currentDrumAxioms: { phrase: any[], role: string, id: string }[] = [];
   private currentLickId: string = '';
   private currentTrackName: string = 'Local';
   private sessionAnchorId: string | null = null;
@@ -97,7 +98,6 @@ export class CyberBluesBrain {
   private microTransposition: number = 0;
   private lickHistory: string[] = [];
   
-  // #ЗАЧЕМ: ПЛАН №1600. Герметизация текстур.
   private lastSparkleTime = -999;
 
   private state: BluesCognitiveState & {
@@ -204,6 +204,13 @@ export class CyberBluesBrain {
     return (barsElapsed + startOffset) % totalBars;
   }
 
+  private phraseBarCount(phrase: any[]): number {
+    if (!phrase || phrase.length === 0) return 1;
+    let maxT = 0;
+    for (const n of phrase) if (n.t > maxT) maxT = n.t;
+    return Math.max(1, Math.floor(maxT / TICKS_PER_BAR) + 1);
+  }
+
   private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
     if (e.duration < 3.5) return [e];
     const rippled: FractalEvent[] = [];
@@ -245,6 +252,7 @@ export class CyberBluesBrain {
     this.currentAxiom = [];
     this.currentBassAxiom = [];
     this.currentAccompAxioms = [];
+    this.currentDrumAxioms = [];
     this.currentNativeRoot = null;
     this.currentPreferredInstrument = null;
     this.ensembleStatus = 'ADAPTIVE';
@@ -311,6 +319,9 @@ export class CyberBluesBrain {
               phrase: decompressCompactPhrase(ax.phrase),
               role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument
             }));
+            const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+            this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
+
             const baseBars = selected.bars || 4;
             this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
             this.currentAxiom = rawPhrase;
@@ -401,13 +412,34 @@ export class CyberBluesBrain {
     const resChord = { ...currentChord, rootNote: resRoot };
     const events: FractalEvent[] = [];
 
+    const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
+    const ensembleAnchor = this.currentTheme ? (this.currentTheme as any).startBar : epoch;
+    const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
+
     if (isBridge) {
       const bridgeEvents = this.renderLiquidBridge(epoch, resChord, tension, hints);
       bridgeEvents.forEach(e => { if (!e.params) e.params = {}; e.params.tension = tension; });
       return { events: bridgeEvents, lickId: 'Liquid Bridge', trackName: this.currentTrackName, activeAxioms: { melody: 'Bridge Flow' } };
     }
 
-    if (hints.drums) events.push(...this.renderHybridDrums(epoch, tension, isSoloistResting));
+    // 1. DRUMS (Locked 4/4 Foundation)
+    if (hints.drums) {
+        events.push(...this.renderHybridDrums(epoch, tension, isSoloistResting));
+        // Heritage Scavenging (Filter Kick/Snare)
+        if (this.currentDrumAxioms.length > 0) {
+            const axiomEvents = this.currentDrumAxioms.flatMap(ax => {
+                const localBar = Math.abs(mosaicBar) % this.phraseBarCount(ax.phrase);
+                const barOffset = localBar * TICKS_PER_BAR;
+                return ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR)
+                    .filter(n => n.deg !== 0 && n.deg !== 2) 
+                    .map(n => ({
+                        type: 'perc-005', note: 60, time: (n.t - barOffset) * TICK_TO_BEAT,
+                        duration: 0.1, weight: 0.25, technique: 'hit'
+                    }));
+            });
+            events.push(...axiomEvents as FractalEvent[]);
+        }
+    }
 
     const bassEvents = hints.bass ? this.renderSymbioticBass(resChord, epoch, tension, dna) : [];
     events.push(...bassEvents.flatMap(e => this.rippleLongNote(e, resChord)));
@@ -480,7 +512,7 @@ export class CyberBluesBrain {
         ensemble: `${this.ensembleStatus}`,
         bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Heavy Riff'
       },
-      narrative: `Heavy Rock-Blues: ${this.currentTrackName} [Mut: ${this.state.lastMutationType.toUpperCase()}]`
+      narrative: `Heavy Rock-Blues: ${this.currentTrackName} [Subtle Variety: ON]`
     };
   }
 
@@ -534,7 +566,6 @@ export class CyberBluesBrain {
       });
     }
 
-    // #ЗАЧЕМ: ПЛАН №1600. Герметизация текстур (16с окно).
     const barDuration = (60 / this.config.tempo) * 4;
     const currentTime = epoch * barDuration;
     
@@ -562,13 +593,10 @@ export class CyberBluesBrain {
   private renderPowerChordAccompaniment(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
     const events: FractalEvent[] = [];
     const root = chord.rootNote + this.currentTransposition + this.microTransposition;
-    
-    // #ЗАЧЕМ: Протокол Золотой Ноты и Power Chords (без терций).
     const intervals = [0, 7, 12];
-    const goldenTicks = [0, 3, 6, 9];
     
-    goldenTicks.forEach(t => {
-      // #ЗАЧЕМ: "Не постоянно" — вероятностный затвор.
+    // #ЗАЧЕМ: ПЛАН №2930. Locked Foundation 4/4.
+    [0, 3, 6, 9].forEach(t => {
       const hitChance = 0.4 + (tension * 0.45);
       if (this.random.next() < hitChance) {
           intervals.forEach(interval => {
@@ -616,27 +644,34 @@ export class CyberBluesBrain {
 
   private renderHybridDrums(epoch: number, tension: number, isSoloistResting: boolean): FractalEvent[] {
     const events: FractalEvent[] = [];
-    events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 1.2, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
-    events.push({ type: 'drum_kick_reso', note: 36, time: 4.5 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
-    events.push({ type: 'drum_kick_reso', note: 36, time: 9 * TICK_TO_BEAT, duration: 0.1, weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
+    // Locked 4/4 Kick
+    [0, 3, 6, 9].forEach(t => events.push({ 
+        type: 'drum_kick_reso', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, 
+        weight: t === 0 ? 1.2 : 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
+    }));
 
+    // Locked 4/4 Snare (Beats 2 & 4)
     [3, 9].forEach(t => events.push({
       type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1,
       weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
     }));
 
+    // Tension-based variety
+    const varietyProb = 0.3 + (tension * 0.5);
     [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].forEach(t => {
-      const isCrash = (t === 0 && (epoch % 4 === 0 || tension > 0.7));
-      events.push({
-        type: isCrash ? 'drum_crash2' : 'drum_25693__walter_odington__hackney-hat-1',
-        note: isCrash ? 49 : 42,
-        time: t * TICK_TO_BEAT,
-        duration: isCrash ? 1.5 : 0.1,
-        weight: isCrash ? 0.9 : 0.45,
-        technique: 'hit',
-        dynamics: 'mf',
-        phrasing: 'staccato'
-      });
+      if (this.random.next() < varietyProb) {
+        const isCrash = (t === 0 && (epoch % 4 === 0 || tension > 0.7));
+        events.push({
+            type: isCrash ? 'drum_crash2' : 'drum_25693__walter_odington__hackney-hat-1',
+            note: isCrash ? 49 : 42,
+            time: t * TICK_TO_BEAT,
+            duration: isCrash ? 1.5 : 0.1,
+            weight: isCrash ? 0.9 : 0.45,
+            technique: 'hit',
+            dynamics: 'mf',
+            phrasing: 'staccato'
+        });
+      }
     });
 
     const isFourthBar = epoch % 4 === 3;

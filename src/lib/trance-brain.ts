@@ -1,8 +1,8 @@
 /**
-@fileOverview Trance Brain V31.0 — "Neuro Space Heritage Recovery".
-#ЗАЧЕМ: 1. Внедрение Mincer Protocol (всеядность наследия).
-      2. Разрежение собственной активности для работы Генетического Декоратора.
-      3. Ускорение поиска аксиом (lockout 1 bar).
+@fileOverview Trance Brain V31.1 — "Subtle Rhythm Evolution".
+#ЗАЧЕМ: ПЛАН №2930. 1. Locked 4/4 Foundation.
+      2. Heritage Percussion Scavenging.
+      3. Tension-based Ghost Variety.
 */
 import {
   FractalEvent,
@@ -88,6 +88,7 @@ export class TranceBrain {
   private currentPreferredInstrument: string | null = null;
   private currentBassAxiom: any[] = [];
   private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
+  private currentDrumAxioms: { phrase: any[], role: string, id: string }[] = [];
   private currentLickId: string = '';
   private currentTrackName: string = 'Local';
   private sessionAnchorId: string | null = null;
@@ -247,6 +248,7 @@ export class TranceBrain {
     this.currentAxiom = [];
     this.currentBassAxiom = [];
     this.currentAccompAxioms = [];
+    this.currentDrumAxioms = [];
     this.currentNativeRoot = null;
     this.currentPreferredInstrument = null;
     this.ensembleStatus = 'ADAPTIVE';
@@ -266,8 +268,6 @@ export class TranceBrain {
         const isTranceMatch = axGenres.some(g => ['trance', 'psybient', 'ambient', 'foundry'].includes(g));
         return isTranceMatch && (axMoods.length === 0 || axMoods.includes(this.mood));
       });
-      
-      // #ЗАЧЕМ: The Mincer Protocol. Если трансовых нет — берем любые.
       if (filteredPool.length === 0) {
           filteredPool = poolToUse;
       }
@@ -318,6 +318,9 @@ export class TranceBrain {
               phrase: decompressCompactPhrase(ax.phrase),
               role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument
             }));
+            const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+            this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
+
             const baseBars = selected.bars || 4;
             this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
             this.currentAxiom = rawPhrase;
@@ -329,7 +332,6 @@ export class TranceBrain {
       }
     }
     this.currentTrackName = 'Generative';
-    // #ЗАЧЕМ: Ускорение поиска. Блокировка только на 1 такт.
     this.soloistBusyUntilBar = epoch + 1;
     return undefined;
   }
@@ -402,12 +404,33 @@ export class TranceBrain {
     const resChord = { ...currentChord, rootNote: resRoot };
     const events: FractalEvent[] = [];
 
+    const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
+    const ensembleAnchor = this.currentTheme ? this.currentTheme.startBar : epoch;
+    const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
+
     if (isBridge) {
       const bridgeEvents = this.renderTranceBridge(epoch, resChord, tension, hints);
       return { events: bridgeEvents, lickId: 'Soft Bridge', trackName: this.currentTrackName };
     }
 
-    if (hints.drums) events.push(...this.renderFoundryTranceDrums(epoch, tension));
+    // 1. DRUMS (Locked 4/4 Foundation)
+    if (hints.drums) {
+        events.push(...this.renderFoundryTranceDrums(epoch, tension));
+        // #ЗАЧЕМ: ПЛАН №2930. Heritage DNA как подложка (фильтруем Kick/Snare).
+        if (this.currentDrumAxioms.length > 0) {
+            const axiomEvents = this.currentDrumAxioms.flatMap(ax => {
+                const localBar = Math.abs(mosaicBar) % this.phraseBarCount(ax.phrase);
+                const barOffset = localBar * TICKS_PER_BAR;
+                return ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR)
+                    .filter(n => n.deg !== 0 && n.deg !== 2) 
+                    .map(n => ({
+                        type: 'perc-002', note: 60, time: (n.t - barOffset) * TICK_TO_BEAT,
+                        duration: 0.1, weight: 0.25, technique: 'hit'
+                    }));
+            });
+            events.push(...axiomEvents as FractalEvent[]);
+        }
+    }
 
     const bassEvents = hints.bass ? this.renderRollingBass(resChord, epoch, tension, dna) : [];
     events.push(...bassEvents.flatMap(e => this.rippleLongNote(e, resChord)));
@@ -425,8 +448,6 @@ export class TranceBrain {
         let activeAxiom = this.applyMutationLogic(this.currentAxiom, tension, this.seed + epoch);
         melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension);
       }
-      
-      // #ЗАЧЕМ: Разрежение. Оставляем 70% тактов пустыми для работы Генетического Декоратора (мастерписов).
       if (melodyEvents.length === 0 && this.random.next() < 0.3) {
           melodyEvents = this.renderGapArp(epoch, resChord, tension);
       }
@@ -470,12 +491,13 @@ export class TranceBrain {
         drums: 'Foundry Hybrid',
         bass: 'Rolling Sub'
       },
-      narrative: `Soft Trance: ${this.currentTrackName} [Mincer: ON]`
+      narrative: `Soft Trance: ${this.currentTrackName} [Subtle Variety: ON]`
     };
   }
 
   private renderFoundryTranceDrums(epoch: number, tension: number): FractalEvent[] {
     const events: FractalEvent[] = [];
+    // #ЗАЧЕМ: ПЛАН №2930. Незыблемый фундамент 4/4.
     [0, 3, 6, 9].forEach(t => events.push({ 
         type: 'drum_foundry_quality', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, 
         weight: 0.65, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
@@ -486,10 +508,16 @@ export class TranceBrain {
       weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
     }));
 
-    [1.5, 4.5, 7.5, 10.5].forEach(t => events.push({
-      type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.05,
-      weight: 0.45, technique: 'hit'
-    }));
+    // #ЗАЧЕМ: Деликатное разнообразие по Tension.
+    const varietyProb = 0.2 + (tension * 0.7);
+    [1.5, 4.5, 7.5, 10.5].forEach(t => {
+      if (this.random.next() < varietyProb) {
+        events.push({
+          type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.05,
+          weight: 0.45, technique: 'hit'
+        });
+      }
+    });
 
     return events;
   }
@@ -654,7 +682,7 @@ export class TranceBrain {
         weight: 0.7,
         technique: 'hit',
         dynamics: 'p',
-        phrasing: 'legate',
+        phrasing: 'legato',
         params: { 
           mood: this.mood, 
           genre: this.config.genre, 
