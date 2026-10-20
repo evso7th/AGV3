@@ -5,7 +5,7 @@
     "values": {
       "master": 0.65,
       "bass": 0.78,
-      "melody": 0.48,
+      "melody": 0.24,
       "accompaniment": 0.62,
       "pianoAccompaniment": 0.0675,
       "harmony": 0.0375,
@@ -21,7 +21,7 @@
     "values": {
       "master": 0.65,
       "bass": 0.60,
-      "melody": 0.40,
+      "melody": 0.20,
       "accompaniment": 0.35,
       "pianoAccompaniment": 0.0875,
       "harmony": 0.03125,
@@ -37,7 +37,7 @@
     "values": {
       "master": 0.70,
       "bass": 0.80,
-      "melody": 0.50,
+      "melody": 0.25,
       "accompaniment": 0.50,
       "pianoAccompaniment": 0.075,
       "harmony": 0.0375,
@@ -53,7 +53,7 @@
     "values": {
       "master": 0.75,
       "bass": 0.78,
-      "melody": 0.28,
+      "melody": 0.14,
       "accompaniment": 0.54,
       "pianoAccompaniment": 0.56,
       "harmony": 0.53,
@@ -69,7 +69,7 @@
     "values": {
       "master": 0.75,
       "bass": 0.78,
-      "melody": 0.28,
+      "melody": 0.14,
       "accompaniment": 0.54,
       "pianoAccompaniment": 0.56,
       "harmony": 0.53,
@@ -85,7 +85,7 @@
     "values": {
       "master": 0.75,
       "bass": 0.70,
-      "melody": 0.65,
+      "melody": 0.325,
       "accompaniment": 0.15,
       "pianoAccompaniment": 0.0875,
       "harmony": 0.025,
