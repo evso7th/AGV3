@@ -1,6 +1,6 @@
 /**
-@fileOverview Cyber Blues Brain V1.9 — "Subtle Percussion Return".
-#ЗАЧЕМ: ПЛАН №3000. Возврат перкуссии из DNA с вероятностью 0.25.
+@fileOverview Cyber Blues Brain V1.9.1 — "Percussion Dilution".
+#ЗАЧЕМ: ПЛАН №3010. Максимальное разряжение перкуссии (p=0.08, только в четных тактах).
 */
 import {
   FractalEvent,
@@ -77,6 +77,7 @@ export class CyberBluesBrain {
   private config: BluesBrainConfig;
   private seed: number;
   private mood: Mood;
+  private genre: Genre;
   private random: any;
   private currentAxiom: any[] = [];
   private currentAxiomMaxTick: number = 0;
@@ -119,6 +120,7 @@ export class CyberBluesBrain {
   ) {
     this.seed = seed;
     this.mood = mood;
+    this.genre = (genre as Genre) || 'heavy_blues_rock';
     this.random = this.createSeededRandom(seed);
     this.config = {
       ...DEFAULT_CONFIG,
@@ -126,7 +128,7 @@ export class CyberBluesBrain {
       cloudAxioms: cloudAxioms || [],
       selectedCompositionIds: selectedCompositionIds || [],
       activeAnchorId: activeAnchorId || null,
-      genre: genre || 'heavy_blues_rock',
+      genre: this.genre,
       useHeritage: useHeritage,
       isImprovising: (selectedCompositionIds || []).length === 0,
       emotion: {
@@ -423,14 +425,14 @@ export class CyberBluesBrain {
     // 1. DRUMS (Locked 4/4 Foundation)
     if (hints.drums) {
         events.push(...this.renderHybridDrums(epoch, tension, isSoloistResting));
-        // #ЗАЧЕМ: ПЛАН №3000. Возвращаем перкуссию из DNA, но редко (p=0.25).
-        if (this.currentDrumAxioms.length > 0) {
+        // #ЗАЧЕМ: ПЛАН №3010. Еще сильнее разряжаем перкуссию (p=0.08, только четные такты).
+        if (this.currentDrumAxioms.length > 0 && epoch % 2 === 0) {
             const axiomEvents = this.currentDrumAxioms.flatMap(ax => {
                 const localBar = Math.abs(mosaicBar) % this.phraseBarCount(ax.phrase);
                 const barOffset = localBar * TICKS_PER_BAR;
                 return ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR)
                     .filter(n => n.deg !== 0 && n.deg !== 2) 
-                    .filter(() => this.random.next() < 0.25) // Редко!
+                    .filter(() => this.random.next() < 0.08) // Максимально редко!
                     .map(n => ({
                         type: 'perc-005', note: 60, time: (n.t - barOffset) * TICK_TO_BEAT,
                         duration: 0.1, weight: 0.35, technique: 'hit'
@@ -511,7 +513,7 @@ export class CyberBluesBrain {
         ensemble: `${this.ensembleStatus}`,
         bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Heavy Riff'
       },
-      narrative: `Heavy Rock-Blues: ${this.currentTrackName} [Drums Restored]`
+      narrative: `Heavy Rock-Blues: ${this.currentTrackName} [Drums: Ultra Rare Perc]`
     };
   }
 
@@ -749,7 +751,7 @@ export class CyberBluesBrain {
           weight: 0.9,
           technique: 'slap',
           dynamics: 'f',
-          phrasing: 'legato',
+          phrasing: 'legate',
           params: { drive: 0.6 }
         }));
       }
