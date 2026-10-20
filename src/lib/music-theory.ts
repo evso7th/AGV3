@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.5 — "Ambient Bass Purity".
- * #ЗАЧЕМ: Реализация ПЛАНА №2980. Принудительный фоллбек баса в Ambient для исключения "слепа".
+ * @fileOverview Universal Music Theory Utilities V6.6 — "Foundry Bass Purity".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3020. Разрешение блюзового баса и запрет слэпа в Foundry.
  */
 
 import type { 
@@ -87,17 +87,19 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
         // 1. PRIORITY BASS FILTER (Ambient/Foundry Purity)
-        // #ЗАЧЕМ: ПЛАН №2980. Гарантированный отсев агрессивных басов (slap/rock) в спокойных жанрах.
+        // #ЗАЧЕМ: ПЛАН №3020. Запрет слэпа, разрешение мягкого блюза и джаза.
         if (part === 'bass') {
             if (genre === 'ambient' || genre === 'foundry') {
-                const isAggressive = clean.includes('slap') || clean.includes('rock') || clean.includes('pick') || clean.includes('blues');
-                if (isAggressive) return genre === 'foundry' ? 'bass_808' : 'bass_ambient';
+                const isForbidden = clean.includes('slap') || clean.includes('rock') || clean.includes('pick');
+                if (isForbidden) return 'bass_jazz_warm'; 
                 
+                if (clean.includes('jazz') || clean.includes('warm')) return 'bass_jazz_warm';
+                if (clean.includes('blues')) return 'bass_blues';
                 if (clean.includes('808')) return 'bass_808';
-                if (clean.includes('warm') || clean.includes('jazz')) return 'bass_jazz_warm';
                 if (clean.includes('dark') || clean.includes('ambient')) return 'bass_ambient';
                 
-                return genre === 'foundry' ? 'bass_808' : 'bass_ambient';
+                // Дефолтный фоллбек - мягкий джаз
+                return 'bass_jazz_warm';
             }
         }
 
