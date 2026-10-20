@@ -1,8 +1,6 @@
 /**
-@fileOverview Cyber Blues Brain V1.7 — "Subtle Rhythm Evolution".
-#ЗАЧЕМ: ПЛАН №2930. 1. Locked 4/4 Foundation (0,3,6,9).
-      2. Heritage Percussion Filter (Scavenging).
-      3. Tension-based Ghost Variety.
+@fileOverview Cyber Blues Brain V1.8 — "Rhythm Restoration".
+#ЗАЧЕМ: ПЛАН №2990. Возврат тяжелого рок-бита. Удаление перкуссионного хаоса.
 */
 import {
   FractalEvent,
@@ -204,13 +202,6 @@ export class CyberBluesBrain {
     return (barsElapsed + startOffset) % totalBars;
   }
 
-  private phraseBarCount(phrase: any[]): number {
-    if (!phrase || phrase.length === 0) return 1;
-    let maxT = 0;
-    for (const n of phrase) if (n.t > maxT) maxT = n.t;
-    return Math.max(1, Math.floor(maxT / TICKS_PER_BAR) + 1);
-  }
-
   private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
     if (e.duration < 3.5) return [e];
     const rippled: FractalEvent[] = [];
@@ -319,8 +310,6 @@ export class CyberBluesBrain {
               phrase: decompressCompactPhrase(ax.phrase),
               role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument
             }));
-            const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-            this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
 
             const baseBars = selected.bars || 4;
             this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
@@ -412,10 +401,6 @@ export class CyberBluesBrain {
     const resChord = { ...currentChord, rootNote: resRoot };
     const events: FractalEvent[] = [];
 
-    const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
-    const ensembleAnchor = this.currentTheme ? (this.currentTheme as any).startBar : epoch;
-    const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
-
     if (isBridge) {
       const bridgeEvents = this.renderLiquidBridge(epoch, resChord, tension, hints);
       bridgeEvents.forEach(e => { if (!e.params) e.params = {}; e.params.tension = tension; });
@@ -423,22 +408,9 @@ export class CyberBluesBrain {
     }
 
     // 1. DRUMS (Locked 4/4 Foundation)
+    // #ЗАЧЕМ: ПЛАН №2990. Возврат нормального рок-бита без DNA Scavenging.
     if (hints.drums) {
         events.push(...this.renderHybridDrums(epoch, tension, isSoloistResting));
-        // Heritage Scavenging (Filter Kick/Snare)
-        if (this.currentDrumAxioms.length > 0) {
-            const axiomEvents = this.currentDrumAxioms.flatMap(ax => {
-                const localBar = Math.abs(mosaicBar) % this.phraseBarCount(ax.phrase);
-                const barOffset = localBar * TICKS_PER_BAR;
-                return ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR)
-                    .filter(n => n.deg !== 0 && n.deg !== 2) 
-                    .map(n => ({
-                        type: 'perc-005', note: 60, time: (n.t - barOffset) * TICK_TO_BEAT,
-                        duration: 0.1, weight: 0.25, technique: 'hit'
-                    }));
-            });
-            events.push(...axiomEvents as FractalEvent[]);
-        }
     }
 
     const bassEvents = hints.bass ? this.renderSymbioticBass(resChord, epoch, tension, dna) : [];
@@ -512,7 +484,7 @@ export class CyberBluesBrain {
         ensemble: `${this.ensembleStatus}`,
         bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Heavy Riff'
       },
-      narrative: `Heavy Rock-Blues: ${this.currentTrackName} [Subtle Variety: ON]`
+      narrative: `Heavy Rock-Blues: ${this.currentTrackName} [Drums Restored]`
     };
   }
 
@@ -595,7 +567,6 @@ export class CyberBluesBrain {
     const root = chord.rootNote + this.currentTransposition + this.microTransposition;
     const intervals = [0, 7, 12];
     
-    // #ЗАЧЕМ: ПЛАН №2930. Locked Foundation 4/4.
     [0, 3, 6, 9].forEach(t => {
       const hitChance = 0.4 + (tension * 0.45);
       if (this.random.next() < hitChance) {
@@ -644,22 +615,20 @@ export class CyberBluesBrain {
 
   private renderHybridDrums(epoch: number, tension: number, isSoloistResting: boolean): FractalEvent[] {
     const events: FractalEvent[] = [];
-    // Locked 4/4 Kick
+    // Locked 4/4 Kick - HEAVY
     [0, 3, 6, 9].forEach(t => events.push({ 
         type: 'drum_kick_reso', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, 
-        weight: t === 0 ? 1.2 : 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
+        weight: t === 0 ? 1.3 : 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
     }));
 
-    // Locked 4/4 Snare (Beats 2 & 4)
+    // Locked 4/4 Snare (Beats 2 & 4) - HEAVY
     [3, 9].forEach(t => events.push({
       type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1,
-      weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
+      weight: 1.2, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
     }));
 
-    // Tension-based variety
-    const varietyProb = 0.3 + (tension * 0.5);
+    // Solid 8th Hats (No 16th chaos)
     [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].forEach(t => {
-      if (this.random.next() < varietyProb) {
         const isCrash = (t === 0 && (epoch % 4 === 0 || tension > 0.7));
         events.push({
             type: isCrash ? 'drum_crash2' : 'drum_25693__walter_odington__hackney-hat-1',
@@ -671,7 +640,6 @@ export class CyberBluesBrain {
             dynamics: 'mf',
             phrasing: 'staccato'
         });
-      }
     });
 
     const isFourthBar = epoch % 4 === 3;
@@ -864,3 +832,4 @@ export class CyberBluesBrain {
   }
   private constrainAccompanimentOctave(note: number): number { let n = note; if(!isFinite(n)) return 60; while (n > 71) n -= 12; while (n < 48) n += 12; return n; }
 }
+
