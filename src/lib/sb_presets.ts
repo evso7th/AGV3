@@ -125,7 +125,7 @@ drive: { type: 'fuzz', amount: 0.65 }
 guitar_shineOn: {
 type: 'guitar',
 name: 'Cyber Shine Lead',
-volume: 0.68,
+volume: 0.34, // Снижено в 2 раза (ПЛАН №2950)
 osc: { width: 0.5 },
 drive: { type: 'muff', amount: 0.7 },
 post: { lpf: 3800 },
@@ -140,7 +140,7 @@ calibrationTrimDb: 4.5
 guitar_muffLead: {
 type: 'guitar',
 name: 'Cyber Muff Lead',
-volume: 0.72,
+volume: 0.36, // Снижено в 2 раза (ПЛАН №2950)
 osc: { width: 0.6 },
 drive: { type: 'muff', amount: 0.85 },
 post: { lpf: 3000 },

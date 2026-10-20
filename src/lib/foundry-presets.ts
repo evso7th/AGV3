@@ -40,7 +40,7 @@ export const FOUNDRY_PRESETS = {
     name: 'Industrial B3 (Dirty)',
     volume: 0.45, // Поднято
     drawbars: [8, 8, 8, 5, 0, 0, 0, 0, 0],
-    adsr: { a: 0.05, d: 0.1, s: 0.8, r: 0.45 }, 
+    adsr: { a: 0.05, d: 0.1, s: 0.85, r: 0.45 }, 
     lpf: 3200,
     reverbMix: 0.08,
     drive: { type: 'soft', amount: 0.55 },
@@ -75,7 +75,7 @@ export const FOUNDRY_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.12, 
+    volume: 0.06, // Снижено в 2 раза (ПЛАН №2950)
     osc: { width: 0.46 },
     drive: { type: 'soft', amount: 0.30 },
     post: { lpf: 5000 }, 
@@ -91,7 +91,7 @@ export const FOUNDRY_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead (Warm Grit)',
-    volume: 0.08, 
+    volume: 0.04, // Снижено в 2 раза (ПЛАН №2950)
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.55 },
     post: { lpf: 4200 },

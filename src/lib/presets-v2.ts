@@ -86,7 +86,7 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.10,
+    volume: 0.05, // Снижено в 2 раза (ПЛАН №2950)
     osc: { width: 0.46 },
     drive: { type: 'soft', amount: 0.25 },
     post: { lpf: 5000 }, 
@@ -102,7 +102,7 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead (Warm Grit)',
-    volume: 0.06,
+    volume: 0.03, // Снижено в 2 раза (ПЛАН №2950)
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.4 },
     post: { lpf: 4000 },
