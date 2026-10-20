@@ -1,6 +1,6 @@
 /**
  * @fileOverview Master Mix Registry V4.9 — "Cyber Blues Refinement".
- * #ЗАЧЕМ: ПЛАН №3000 — Снижение громкости аккомпанемента для Cyber Blues в 2 раза.
+ * #ЗАЧЕМ: ПЛАН №3030 — Снижение громкости аккомпанемента для Neuro Space в 2 раза.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -20,7 +20,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     psybient: { 
         ...UNIVERSAL_IMPERIAL_MIX,
         melody: 0.1875, 
-        accompaniment: 0.80,
+        accompaniment: 0.40, // Снижено в 2 раза с 0.80
         pianoAccompaniment: 0.035,
         drums: 0.12
     },

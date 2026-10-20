@@ -1,8 +1,6 @@
 /**
-@fileOverview Trance Brain V31.1 — "Subtle Rhythm Evolution".
-#ЗАЧЕМ: ПЛАН №2930. 1. Locked 4/4 Foundation.
-      2. Heritage Percussion Scavenging.
-      3. Tension-based Ghost Variety.
+@fileOverview Trance Brain V31.2 — "Neuro Smoothness Protocol".
+#ЗАЧЕМ: ПЛАН №3030. Продление длительностей аккомпанемента для предотвращения "обрывов".
 */
 import {
   FractalEvent,
@@ -552,7 +550,7 @@ export class TranceBrain {
                     type: 'accompaniment',
                     note: this.constrainAccompanimentOctave(root + interval),
                     time: t * TICK_TO_BEAT,
-                    duration: 1.8 * TICK_TO_BEAT, 
+                    duration: 3.5 * TICK_TO_BEAT, // #ЗАЧЕМ: ПЛАН №3030. Продлено для мягкости.
                     weight: 0.4 + (tension * 0.1),
                     technique: 'swell',
                     dynamics: 'p',
@@ -639,7 +637,7 @@ export class TranceBrain {
         type: type,
         note: finalNote,
         time: (n.t - barOffset) * TICK_TO_BEAT,
-        duration: Math.min(n.d, 6) * TICK_TO_BEAT,
+        duration: n.d * TICK_TO_BEAT, // #ЗАЧЕМ: ПЛАН №3030. Снят лимит Math.min(n.d, 6).
         weight: 0.4,
         technique: 'hit'
       };
