@@ -1,6 +1,6 @@
 /**
-@fileOverview Cyber Blues Brain V1.8 — "Rhythm Restoration".
-#ЗАЧЕМ: ПЛАН №2990. Возврат тяжелого рок-бита. Удаление перкуссионного хаоса.
+@fileOverview Cyber Blues Brain V1.9 — "Subtle Percussion Return".
+#ЗАЧЕМ: ПЛАН №3000. Возврат перкуссии из DNA с вероятностью 0.25.
 */
 import {
   FractalEvent,
@@ -202,6 +202,13 @@ export class CyberBluesBrain {
     return (barsElapsed + startOffset) % totalBars;
   }
 
+  private phraseBarCount(phrase: any[]): number {
+    if (!phrase || phrase.length === 0) return 1;
+    let maxT = 0;
+    for (const n of phrase) if (n.t > maxT) maxT = n.t;
+    return Math.max(1, Math.floor(maxT / TICKS_PER_BAR) + 1);
+  }
+
   private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
     if (e.duration < 3.5) return [e];
     const rippled: FractalEvent[] = [];
@@ -310,6 +317,8 @@ export class CyberBluesBrain {
               phrase: decompressCompactPhrase(ax.phrase),
               role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument
             }));
+            const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+            this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
 
             const baseBars = selected.bars || 4;
             this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
@@ -401,6 +410,10 @@ export class CyberBluesBrain {
     const resChord = { ...currentChord, rootNote: resRoot };
     const events: FractalEvent[] = [];
 
+    const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
+    const ensembleAnchor = this.currentTheme ? this.currentTheme.startBar : epoch;
+    const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
+
     if (isBridge) {
       const bridgeEvents = this.renderLiquidBridge(epoch, resChord, tension, hints);
       bridgeEvents.forEach(e => { if (!e.params) e.params = {}; e.params.tension = tension; });
@@ -408,9 +421,23 @@ export class CyberBluesBrain {
     }
 
     // 1. DRUMS (Locked 4/4 Foundation)
-    // #ЗАЧЕМ: ПЛАН №2990. Возврат нормального рок-бита без DNA Scavenging.
     if (hints.drums) {
         events.push(...this.renderHybridDrums(epoch, tension, isSoloistResting));
+        // #ЗАЧЕМ: ПЛАН №3000. Возвращаем перкуссию из DNA, но редко (p=0.25).
+        if (this.currentDrumAxioms.length > 0) {
+            const axiomEvents = this.currentDrumAxioms.flatMap(ax => {
+                const localBar = Math.abs(mosaicBar) % this.phraseBarCount(ax.phrase);
+                const barOffset = localBar * TICKS_PER_BAR;
+                return ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR)
+                    .filter(n => n.deg !== 0 && n.deg !== 2) 
+                    .filter(() => this.random.next() < 0.25) // Редко!
+                    .map(n => ({
+                        type: 'perc-005', note: 60, time: (n.t - barOffset) * TICK_TO_BEAT,
+                        duration: 0.1, weight: 0.35, technique: 'hit'
+                    }));
+            });
+            events.push(...axiomEvents as FractalEvent[]);
+        }
     }
 
     const bassEvents = hints.bass ? this.renderSymbioticBass(resChord, epoch, tension, dna) : [];
@@ -832,4 +859,3 @@ export class CyberBluesBrain {
   }
   private constrainAccompanimentOctave(note: number): number { let n = note; if(!isFinite(n)) return 60; while (n > 71) n -= 12; while (n < 48) n += 12; return n; }
 }
-
