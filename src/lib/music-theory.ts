@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.4 — "Foundry Bass Purity".
- * #ЗАЧЕМ: Реализация ПЛАНА №1250/2565. Вето на перкуссионные басы в Ambient и Foundry.
+ * @fileOverview Universal Music Theory Utilities V6.5 — "Ambient Bass Purity".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2980. Принудительный фоллбек баса в Ambient для исключения "слепа".
  */
 
 import type { 
@@ -85,6 +85,21 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         if (!targetHint || targetHint === 'none') return 'none';
         
         const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+        // 1. PRIORITY BASS FILTER (Ambient/Foundry Purity)
+        // #ЗАЧЕМ: ПЛАН №2980. Гарантированный отсев агрессивных басов (slap/rock) в спокойных жанрах.
+        if (part === 'bass') {
+            if (genre === 'ambient' || genre === 'foundry') {
+                const isAggressive = clean.includes('slap') || clean.includes('rock') || clean.includes('pick') || clean.includes('blues');
+                if (isAggressive) return genre === 'foundry' ? 'bass_808' : 'bass_ambient';
+                
+                if (clean.includes('808')) return 'bass_808';
+                if (clean.includes('warm') || clean.includes('jazz')) return 'bass_jazz_warm';
+                if (clean.includes('dark') || clean.includes('ambient')) return 'bass_ambient';
+                
+                return genre === 'foundry' ? 'bass_808' : 'bass_ambient';
+            }
+        }
 
         let registry = V2_PRESETS;
         if (genre === 'foundry') {
@@ -175,6 +190,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         if (clean === 'dynrhodespiano') return tension < 0.6 ? 'ep_rhodes_warm' : 'piano';
         if (clean === 'dynpianorhodes') return tension < 0.6 ? 'piano' : 'ep_rhodes_warm';
 
+        // 2. GENERAL REGISTRY MATCHING (Unified V2)
         const matchedV2 = Object.keys(registry).find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === clean);
         if (matchedV2) return matchedV2;
         
@@ -202,15 +218,6 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         }
 
         if (part === 'bass') {
-            // #ЗАЧЕМ: ПЛАН №1250/2565. Вето на перкуссионные басы в Ambient и Foundry.
-            if (genre === 'ambient' || genre === 'foundry') {
-                if (clean.includes('808')) return 'bass_808';
-                if (clean.includes('warm') || clean.includes('jazz')) return 'bass_jazz_warm';
-                if (clean.includes('dark') || clean.includes('ambient')) return 'bass_ambient';
-                
-                // Дефолт для чистки звука: 808 для индустриала, амбиент для Slow Fusion
-                return genre === 'foundry' ? 'bass_808' : 'bass_ambient';
-            }
             return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
         }
 
