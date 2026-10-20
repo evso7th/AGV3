@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V40.1 — "Version Bump".
- * #ЗАЧЕМ: ПЛАН №1.0.21. Принудительный бамп для деплоя.
+ * @fileOverview Music Control Hook V40.2 — "Version Bump".
+ * #ЗАЧЕМ: ПЛАН №1.0.23. Синхронизация версии до 1.0.23.
  */
 'use client';
 
