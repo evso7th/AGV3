@@ -1,7 +1,6 @@
 /**
-@fileOverview Cyber Blues Presets Library V1.4 — "Maximum Aggression".
-#ЗАЧЕМ: Финальная "закалка" органов для Cyber Blues.
-#ЧТО: Повышен уровень дисторшна, расширен спектр фильтров, усилены "зубастые" гармоники.
+@fileOverview Cyber Blues Presets Library V1.5 — "Deep Attenuation".
+#ЗАЧЕМ: Снижение громкости гитар Muff и Shine еще в 2 раза для Cyber Blues.
 */
 export const SB_PRESETS = {
 // ───── PADS & SYNTHS (Dynamic Group: dynamicPad) ─────
@@ -51,7 +50,6 @@ drive: { type: 'fuzz', amount: 0.65 },
 reverbMix: 0.25
 },
 // ───── ORGANS (Dynamic Group: dynamicOrgan) ─────
-// #ЗАЧЕМ: ПЛАН №2155. Максимальная агрессия (fuzz 0.92, lpf 4500).
 organ: {
 type: 'synth',
 name: 'Cyber Rock B3 (Lord)',
@@ -125,7 +123,7 @@ drive: { type: 'fuzz', amount: 0.65 }
 guitar_shineOn: {
 type: 'guitar',
 name: 'Cyber Shine Lead',
-volume: 0.34, // Снижено в 2 раза (ПЛАН №2950)
+volume: 0.17, // Снижено еще в 2 раза (всего 4x)
 osc: { width: 0.5 },
 drive: { type: 'muff', amount: 0.7 },
 post: { lpf: 3800 },
@@ -140,7 +138,7 @@ calibrationTrimDb: 4.5
 guitar_muffLead: {
 type: 'guitar',
 name: 'Cyber Muff Lead',
-volume: 0.36, // Снижено в 2 раза (ПЛАН №2950)
+volume: 0.18, // Снижено еще в 2 раза (всего 4x)
 osc: { width: 0.6 },
 drive: { type: 'muff', amount: 0.85 },
 post: { lpf: 3000 },

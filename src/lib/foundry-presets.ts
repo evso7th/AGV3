@@ -1,13 +1,13 @@
 /**
- * @fileOverview Foundry Presets Library V2.2 — "High Fidelity Presence".
- * #ЗАЧЕМ: Усиление громкости и тела звука для "органного концерта" в Dark Trance.
+ * @fileOverview Foundry Presets Library V2.3 — "Deep Attenuation".
+ * #ЗАЧЕМ: Снижение громкости Muff и Shine еще в 2 раза для индастриал-микса.
  */
 
 export const FOUNDRY_PRESETS = {
   synth: { 
     type: 'synth',
     name: 'Industrial Pulse Pad',
-    volume: 0.58, // Поднято с 0.38
+    volume: 0.58, 
     osc: [
       { type: 'sawtooth', detune: 0, octave: 0, gain: 0.8 }, 
       { type: 'sine', detune: 0, octave: -1, gain: 0.45 } 
@@ -23,7 +23,7 @@ export const FOUNDRY_PRESETS = {
   synth_ambient_pad_lush: {
     type: 'synth',
     name: 'Stable Steel Pad',
-    volume: 0.52, // Поднято с 0.35
+    volume: 0.52, 
     osc: [
       { type: 'sawtooth', detune: 0, octave: 0, gain: 0.7 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.5 }
@@ -38,7 +38,7 @@ export const FOUNDRY_PRESETS = {
   organ: {
     type: 'organ',
     name: 'Industrial B3 (Dirty)',
-    volume: 0.45, // Поднято
+    volume: 0.45, 
     drawbars: [8, 8, 8, 5, 0, 0, 0, 0, 0],
     adsr: { a: 0.05, d: 0.1, s: 0.85, r: 0.45 }, 
     lpf: 3200,
@@ -75,7 +75,7 @@ export const FOUNDRY_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.06, // Снижено в 2 раза (ПЛАН №2950)
+    volume: 0.03, // Снижено еще в 2 раза (всего 4x)
     osc: { width: 0.46 },
     drive: { type: 'soft', amount: 0.30 },
     post: { lpf: 5000 }, 
@@ -91,7 +91,7 @@ export const FOUNDRY_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead (Warm Grit)',
-    volume: 0.04, // Снижено в 2 раза (ПЛАН №2950)
+    volume: 0.02, // Снижено еще в 2 раза (всего 4x)
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.55 },
     post: { lpf: 4200 },

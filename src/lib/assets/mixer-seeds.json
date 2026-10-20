@@ -5,13 +5,13 @@
     "values": {
       "master": 0.65,
       "bass": 0.78,
-      "melody": 0.24,
+      "melody": 0.12,
       "accompaniment": 0.62,
       "pianoAccompaniment": 0.0675,
       "harmony": 0.0375,
       "sparkles": 0.55,
       "sfx": 0.17,
-      "drums": 0.1075
+      "drums": 0.0358
     },
     "genre": "psybient"
   },
@@ -21,13 +21,13 @@
     "values": {
       "master": 0.65,
       "bass": 0.60,
-      "melody": 0.20,
+      "melody": 0.10,
       "accompaniment": 0.35,
       "pianoAccompaniment": 0.0875,
       "harmony": 0.03125,
       "sparkles": 0.60,
       "sfx": 0.50,
-      "drums": 0.10
+      "drums": 0.033
     },
     "genre": "ambient"
   },
@@ -37,13 +37,13 @@
     "values": {
       "master": 0.70,
       "bass": 0.80,
-      "melody": 0.25,
+      "melody": 0.125,
       "accompaniment": 0.50,
       "pianoAccompaniment": 0.075,
       "harmony": 0.0375,
       "sparkles": 0.50,
       "sfx": 0.20,
-      "drums": 0.1375
+      "drums": 0.0458
     },
     "genre": "foundry"
   },
@@ -53,13 +53,13 @@
     "values": {
       "master": 0.75,
       "bass": 0.78,
-      "melody": 0.14,
+      "melody": 0.07,
       "accompaniment": 0.54,
       "pianoAccompaniment": 0.56,
       "harmony": 0.53,
       "sparkles": 0.56,
       "sfx": 0.53,
-      "drums": 0.53
+      "drums": 0.176
     },
     "genre": "blues"
   },
@@ -69,13 +69,13 @@
     "values": {
       "master": 0.75,
       "bass": 0.78,
-      "melody": 0.14,
+      "melody": 0.07,
       "accompaniment": 0.54,
       "pianoAccompaniment": 0.56,
       "harmony": 0.53,
       "sparkles": 0.56,
       "sfx": 0.53,
-      "drums": 0.53
+      "drums": 0.176
     },
     "genre": "cyber_blues"
   },
@@ -85,13 +85,13 @@
     "values": {
       "master": 0.75,
       "bass": 0.70,
-      "melody": 0.325,
+      "melody": 0.1625,
       "accompaniment": 0.15,
       "pianoAccompaniment": 0.0875,
       "harmony": 0.025,
       "sparkles": 0.40,
       "sfx": 0.30,
-      "drums": 0.055
+      "drums": 0.0183
     },
     "genre": "reggae"
   }

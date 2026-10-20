@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V15.0 — "Ambient Tail Restoration".
- * #ЗАЧЕМ: Реализация ПЛАНА №2660. Возврат длинных хвостов для Амбиента через расширение пула до 128 голосов.
+ * @fileOverview Центральная фабрика инструментов V15.1 — "Factory Gain Refinement".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2960. Снижение базового усиления мелодии в 2 раза.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -8,7 +8,6 @@ import { dbToGain } from './guitar-loudness';
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 export let globalActiveVoices = new Set<any>();
-// #ЗАЧЕМ: ПЛАН №2660. Лимит поднят до 128. Этого достаточно для длинных релизов в Ambient.
 let globalVoiceLimit = 128; 
 
 const STEAL_PRIORITY: Record<string, number> = {
@@ -20,6 +19,18 @@ const STEAL_PRIORITY: Record<string, number> = {
     'harmony': 2,
     'bass': 3,
     'pianoAccompaniment': 4 
+};
+
+// #ЗАЧЕМ: ПЛАН №2960. Снижение базового баланса для LEAD-канала.
+const VOICE_BALANCE: Record<string, number> = {
+  bass: 0.95, // Закреплено в предыдущих правках
+  melody: 0.1125, // Снижено с 0.225
+  accompaniment: 0.30, 
+  drums: 0.65,
+  sparkles: 0.65,
+  sfx: 0.65,
+  harmony: 0.15, 
+  pianoAccompaniment: 0.3,
 };
 
 export const setGlobalVoiceLimit = (limit: number) => {
@@ -306,6 +317,13 @@ const createIndependentVoice = (
     }
 
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
+
+    // Apply voice-specific balance
+    const partBalance = VOICE_BALANCE[type] || 1.0;
+    const finalPeak = peak * partBalance;
+    voiceGain.gain.cancelScheduledValues(now);
+    voiceGain.gain.setValueAtTime(0, now);
+    voiceGain.gain.linearRampToValueAtTime(finalPeak, now + attackTime);
 
     const record = { 
         nodes, 

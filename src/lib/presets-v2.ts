@@ -1,7 +1,7 @@
 // V2 Presets — Compatible with buildMultiInstrument()
 // #ОБНОВЛЕНО (ПЛАН №9.0): Внедрение физической модели гитары.
 // #ОБНОВЛЕНО (ПЛАН №2660): Восстановление длинных хвостов для Ambient.
-// #ОБНОВЛЕНО (ПЛАН №2870): Внедрен UNIFIED_V2_REGISTRY для устранения Registry Blindness.
+// #ОБНОВЛЕНО (ПЛАН №2960): Снижение громкости Muff и Shine еще в 2 раза (всего в 4 раза).
 
 import { BASS_PRESETS } from './bass-presets';
 import { FOUNDRY_PRESETS } from './foundry-presets';
@@ -21,7 +21,7 @@ export const V2_PRESETS = {
       { type: 'sine', detune: 0, octave: -1, gain: 0.3 }
     ],
     noise: { on: true, gain: 0.012 },
-    adsr: { a: 0.8, d: 1.2, s: 0.6, r: 2.5 }, // Релиз восстановлен до 2.5с
+    adsr: { a: 0.8, d: 1.2, s: 0.6, r: 2.5 }, 
     lpf: { cutoff: 950, q: 0.8 }, 
     reverbMix: 0
   },
@@ -35,7 +35,7 @@ export const V2_PRESETS = {
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.3 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.4 }
     ],
-    adsr: { a: 2.0, d: 2.5, s: 0.6, r: 4.0 }, // Релиз восстановлен до 4.0с
+    adsr: { a: 2.0, d: 2.5, s: 0.6, r: 4.0 }, 
     lpf: { cutoff: 650, q: 0.7 }, 
     reverbMix: 0
   },
@@ -86,7 +86,7 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.05, // Снижено в 2 раза (ПЛАН №2950)
+    volume: 0.025, // Снижено еще в 2 раза (всего 4x)
     osc: { width: 0.46 },
     drive: { type: 'soft', amount: 0.25 },
     post: { lpf: 5000 }, 
@@ -102,7 +102,7 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead (Warm Grit)',
-    volume: 0.03, // Снижено в 2 раза (ПЛАН №2950)
+    volume: 0.015, // Снижено еще в 2 раза (всего 4x)
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.4 },
     post: { lpf: 4000 },
@@ -123,15 +123,12 @@ export const V2_PRESETS = {
       { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
       { type: 'triangle', octave: 1, detune: 0, gain: 0.15 }
     ],
-    adsr: { a: 0.01, d: 0.3, s: 0.6, r: 1.2 }, // Релиз восстановлен до 1.2с
+    adsr: { a: 0.01, d: 0.3, s: 0.6, r: 1.2 }, 
     lpf: { cutoff: 2400, q: 0.7 }, 
     reverbMix: 0
   }
 } as const;
 
-/**
- * #ЗАЧЕМ: ПЛАН №2870. Единый реестр всех V2-пресетов для всех жанров.
- */
 export const UNIFIED_V2_REGISTRY: Record<string, any> = {
     ...V2_PRESETS,
     ...FOUNDRY_PRESETS,

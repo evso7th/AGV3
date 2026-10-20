@@ -1,14 +1,14 @@
 /**
- * @fileOverview Master Mix Registry V4.7 — "Loudness Refinement".
- * #ЗАЧЕМ: Снижение системной громкости мелодии в 2 раза для всех жанров.
- * #ЧТО: ПЛАН №2760 — Значения для blues и cyber_blues установлены по скриншоту пользователя.
+ * @fileOverview Master Mix Registry V4.8 — "Double Attenuation".
+ * #ЗАЧЕМ: Снижение системной громкости мелодии еще в 2 раза (всего в 4 раза).
+ * #ЧТО: ПЛАН №2960 — Финальная корректировка для обеспечения идеального баланса.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
 
 const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
-    melody: 0.0175, // Снижено в 2 раза с 0.035
+    melody: 0.00875, // Снижено в 2 раза с 0.0175
     accompaniment: 0.10, 
     harmony: 0.0225,      
     pianoAccompaniment: 0.1075, 
@@ -20,7 +20,7 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
 export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     psybient: { 
         ...UNIVERSAL_IMPERIAL_MIX,
-        melody: 0.375, // Снижено в 2 раза с 0.75
+        melody: 0.1875, // Снижено в 2 раза с 0.375
         accompaniment: 0.80,
         pianoAccompaniment: 0.035,
         drums: 0.12
@@ -28,17 +28,17 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     foundry: {
         bass: 0.75,               
-        melody: 0.25, // Снижено в 2 раза с 0.50             
+        melody: 0.125, // Снижено в 2 раза с 0.25             
         accompaniment: 0.75,      
         harmony: 0.035,           
         pianoAccompaniment: 0.035, 
-        drums: 0.14,
+        drums: 0.047, // Из предыдущей правки
         sparkles: 0.50,
         sfx: 0.20
     },
     blues: {
         bass: 0.78,
-        melody: 0.14, // Снижено в 2 раза с 0.28
+        melody: 0.07, // Снижено в 2 раза с 0.14
         accompaniment: 0.54,
         harmony: 0.53,        
         pianoAccompaniment: 0.56, 
@@ -48,7 +48,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     },
     cyber_blues: {
         bass: 0.78,
-        melody: 0.14, // Снижено в 2 раза с 0.28
+        melody: 0.07, // Снижено в 2 раза с 0.14
         accompaniment: 0.54,
         harmony: 0.53,        
         pianoAccompaniment: 0.56, 
@@ -58,7 +58,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     },
     reggae: { 
         ...UNIVERSAL_IMPERIAL_MIX,
-        melody: 0.325, // Снижено в 2 раза
+        melody: 0.1625, // Снижено в 2 раза
         drums: 0.055,
         harmony: 0.0047         
     },
