@@ -1,6 +1,6 @@
 /**
- * @fileOverview Foundry Presets Library V2.6 — "The Mincer Edition".
- * #ЗАЧЕМ: Устранение конфликтов имен и радикальный подъем яркости фильтров.
+ * @fileOverview Foundry Presets Library V2.7 — "Piano Attenuation".
+ * #ЗАЧЕМ: Снижение громкости пианино для обеспечения пространства синтезаторам.
  */
 
 export const FOUNDRY_PRESETS = {
@@ -117,7 +117,7 @@ export const FOUNDRY_PRESETS = {
   foeprhodeswarm: {
     type: 'synth',
     name: 'Industrial Rhodes',
-    volume: 0.88,
+    volume: 0.45, // #ЗАЧЕМ: ПЛАН №3130. Снижено с 0.88 для баланса.
     osc: [
       { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
       { type: 'triangle', octave: 1, detune: 0, gain: 0.2 }

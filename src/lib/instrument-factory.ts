@@ -1,7 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V15.5 — "Center 50 Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №3120. Внутренние веса настроены так, чтобы 50% на слайдере 
- *         соответствовало идеальному миксу пользователя.
+ * @fileOverview Центральная фабрика инструментов V15.6 — "Piano Attenuation".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3130. Снижение громкости пианино в 2.5 раза для баланса.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -23,18 +22,17 @@ const STEAL_PRIORITY: Record<string, number> = {
 };
 
 /**
- * #ЗАЧЕМ: ПЛАН №3120. Коэффициенты для достижения "Золотого баланса" при слайдерах = 0.5.
- * Расчет: (Target_Perceived_Level) / 0.5
+ * #ЗАЧЕМ: ПЛАН №3120/3130. Коэффициенты для достижения "Золотого баланса" при слайдерах = 0.5.
  */
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.74,             // Скриншот: 0.37 -> 0.37/0.5 = 0.74
-  melody: 1.80,           // Скриншот: 0.90 -> 0.90/0.5 = 1.80
-  accompaniment: 2.00,    // Скриншот: 1.00 -> 1.00/0.5 = 2.00
-  drums: 0.68,            // Скриншот: 0.34 -> 0.34/0.5 = 0.68
-  sparkles: 1.00,         // Скриншот: 0.50 -> 0.50/0.5 = 1.00
-  sfx: 0.40,              // Скриншот: 0.20 -> 0.20/0.5 = 0.40
-  harmony: 0.60,          // Скриншот: 0.30 -> 0.30/0.5 = 0.60
-  pianoAccompaniment: 0.10, // Скриншот: 0.05 -> 0.05/0.5 = 0.10
+  bass: 0.74,
+  melody: 1.80,
+  accompaniment: 2.00,
+  drums: 0.68,
+  sparkles: 1.00,
+  sfx: 0.40,
+  harmony: 0.60,
+  pianoAccompaniment: 0.04, // #ЗАЧЕМ: ПЛАН №3130. Снижено с 0.10 для устранения доминирования.
 };
 
 export const setGlobalVoiceLimit = (limit: number) => {
@@ -363,7 +361,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     let currentPreset = { ...preset };
     const instrumentGain = ctx.createGain();
     
-    // #ЗАЧЕМ: ПЛАН №3050. Детерминированная установка громкости.
     const initialVol = isFinite(currentPreset.volume) ? currentPreset.volume : 0.7;
     instrumentGain.gain.setValueAtTime(initialVol, ctx.currentTime);
     
