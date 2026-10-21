@@ -1,11 +1,10 @@
 /**
-@fileOverview Cyber Blues Presets Library V1.5 — "Deep Attenuation".
-#ЗАЧЕМ: Снижение громкости гитар Muff и Shine еще в 2 раза для Cyber Blues.
-#ОБНОВЛЕНО (ПЛАН №3040): Подтверждение "зубастых" тембров и добавление сатурации для Rhodes.
+@fileOverview Cyber Blues Presets Library V1.6 — "Unique Registry Fix".
+#ЗАЧЕМ: Устранение затенения через префиксы 'sb_'.
 */
 export const SB_PRESETS = {
 // ───── PADS & SYNTHS (Dynamic Group: dynamicPad) ─────
-synth: {
+sb_synth: {
 type: 'synth',
 name: 'Cyber Lead Synth',
 volume: 0.72,
@@ -18,10 +17,10 @@ noise: { on: true, gain: 0.04 },
 adsr: { a: 0.005, d: 0.4, s: 0.8, r: 0.4 },
 lpf: { cutoff: 4200, q: 4.5 },
 lfo: { rate: 2.5, amount: 1200, target: 'filter' },
-drive: { type: 'fuzz', amount: 0.82 }, // Maximized fuzz
+drive: { type: 'fuzz', amount: 0.82 }, 
 reverbMix: 0.08
 },
-synth_ambient_pad_lush: {
+sb_synth_ambient_pad_lush: {
 type: 'synth',
 name: 'Cyber Wall Pad',
 volume: 0.68,
@@ -33,10 +32,10 @@ osc: [
 adsr: { a: 0.8, d: 1.5, s: 0.85, r: 1.0 },
 lpf: { cutoff: 1200, q: 2.5 },
 lfo: { rate: 0.3, amount: 600, target: 'filter' },
-drive: { type: 'fuzz', amount: 0.65 }, // Grittier pad
+drive: { type: 'fuzz', amount: 0.65 }, 
 reverbMix: 0.15
 },
-synth_cave_pad: {
+sb_synth_cave_pad: {
 type: 'synth',
 name: 'Cyber Abyssal Wall',
 volume: 0.65,
@@ -47,11 +46,11 @@ osc: [
 ],
 adsr: { a: 1.5, d: 2.5, s: 0.9, r: 1.75 },
 lpf: { cutoff: 600, q: 3.0 },
-drive: { type: 'fuzz', amount: 0.75 }, // Heavier fuzz
+drive: { type: 'fuzz', amount: 0.75 }, 
 reverbMix: 0.25
 },
 // ───── ORGANS (Dynamic Group: dynamicOrgan) ─────
-organ: {
+sb_organ: {
 type: 'synth',
 name: 'Cyber Rock B3 (Lord)',
 volume: 0.58,
@@ -66,7 +65,7 @@ lpf: { cutoff: 4500, q: 3.2 },
 drive: { type: 'fuzz', amount: 0.92 },
 reverbMix: 0.12
 },
-organ_soft_jazz: {
+sb_organ_soft_jazz: {
 type: 'synth',
 name: 'Cyber Gritty Jazz B3',
 volume: 0.52,
@@ -80,7 +79,7 @@ lpf: { cutoff: 2800, q: 2.2 },
 drive: { type: 'fuzz', amount: 0.78 },
 reverbMix: 0.08
 },
-organ_prog: {
+sb_organ_prog: {
 type: 'synth',
 name: 'Cyber Progression B3',
 volume: 0.56,
@@ -95,7 +94,7 @@ lpf: { cutoff: 5200, q: 2.8 },
 drive: { type: 'muff', amount: 0.88 },
 reverbMix: 0.15
 },
-organ_jimmy_smith: {
+sb_organ_jimmy_smith: {
 type: 'synth',
 name: 'Cyber Percussive B3',
 volume: 0.48,
@@ -110,7 +109,7 @@ drive: { type: 'fuzz', amount: 0.76 },
 reverbMix: 0.06
 },
 // ───── GUITARS ─────
-guitar_clean: {
+sb_guitar_clean: {
 type: 'guitar',
 name: 'Cyber Clean Guitar',
 volume: 0.75,
@@ -121,12 +120,12 @@ pluckBrightness: 0.45,
 reverbMix: 0.03,
 drive: { type: 'fuzz', amount: 0.65 }
 },
-guitar_shineOn: {
+sb_guitar_shineOn: {
 type: 'guitar',
 name: 'Cyber Shine Lead',
 volume: 0.17,
 osc: { width: 0.5 },
-drive: { type: 'muff', amount: 0.82 }, // Increased drive
+drive: { type: 'muff', amount: 0.82 }, 
   post: { lpf: 3800 },
 adsr: { a: 0.015, d: 0.6, s: 0.7, r: 2.2 },
 delay: { time: 0.35, fb: 0.25, mix: 0.18 },
@@ -136,12 +135,12 @@ pluckBrightness: 0.55,
 vibrato: { rate: 6.0, depthCents: 18, delay: 0.35 },
 calibrationTrimDb: 4.5
 },
-guitar_muffLead: {
+sb_guitar_muffLead: {
 type: 'guitar',
 name: 'Cyber Muff Lead',
 volume: 0.18,
 osc: { width: 0.6 },
-drive: { type: 'muff', amount: 0.95 }, // Maximized drive
+drive: { type: 'muff', amount: 0.95 }, 
   post: { lpf: 3000 },
 adsr: { a: 0.018, d: 0.7, s: 0.65, r: 2.8 },
 delay: { time: 0.28, fb: 0.2, mix: 0.15 },
@@ -151,7 +150,7 @@ pluckBrightness: 0.4,
 vibrato: { rate: 5.5, depthCents: 22, delay: 0.28 },
 calibrationTrimDb: 2.8
 },
-ep_rhodes_warm: {
+sb_ep_rhodes_warm: {
 type: 'synth',
 name: 'Cyber Rhodes',
 volume: 0.7,
@@ -162,6 +161,6 @@ osc: [
 adsr: { a: 0.008, d: 0.35, s: 0.65, r: 0.5 },
 lpf: { cutoff: 2000, q: 1.2 },
 reverbMix: 0.05,
-drive: { type: 'soft', amount: 0.55 } // Added more grit to Rhodes
+drive: { type: 'soft', amount: 0.55 } 
 }
 };

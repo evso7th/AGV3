@@ -1,8 +1,5 @@
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №9.0): Внедрение физической модели гитары.
-// #ОБНОВЛЕНО (ПЛАН №2660): Восстановление длинных хвостов для Ambient.
-// #ОБНОВЛЕНО (ПЛАН №2960): Снижение громкости Muff и Shine еще в 2 раза (всего в 4 раза).
-// #ОБНОВЛЕНО (ПЛАН №2970): Укорачивание хвостов пэдов в 2 раза.
+// #ОБНОВЛЕНО (ПЛАН №3080): Уникальные ключи для Foundry и Cyber Blues.
 
 import { BASS_PRESETS } from './bass-presets';
 import { FOUNDRY_PRESETS } from './foundry-presets';
@@ -87,7 +84,7 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.025, // Снижено еще в 2 раза (всего 4x)
+    volume: 0.025, 
     osc: { width: 0.46 },
     drive: { type: 'soft', amount: 0.25 },
     post: { lpf: 5000 }, 
@@ -103,7 +100,7 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead (Warm Grit)',
-    volume: 0.015, // Снижено еще в 2 раза (всего 4x)
+    volume: 0.015, 
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.4 },
     post: { lpf: 4000 },

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.6 — "Foundry Bass Purity".
- * #ЗАЧЕМ: Реализация ПЛАНА №3020. Разрешение блюзового баса и запрет слэпа в Foundry.
+ * @fileOverview Universal Music Theory Utilities V6.7 — "Unique Preset Resolution".
+ * #ЗАЧЕМ: Возврат уникальных ID (fo_*, sb_*) для устранения конфликтов в реестре.
  */
 
 import type { 
@@ -14,7 +14,7 @@ import type {
     AxiomVector
 } from '@/types/music';
 import { getChordNameForBar, getDynastyForMood } from './blues-theory';
-import { V2_PRESETS, V1_TO_V2_PRESET_MAP, BASS_PRESET_MAP } from './presets-v2';
+import { V2_PRESETS, V1_TO_V2_PRESET_MAP, BASS_PRESET_MAP, UNIFIED_V2_REGISTRY } from './presets-v2';
 import { BASS_PRESETS } from './bass-presets';
 import { FOUNDRY_PRESETS } from './foundry-presets';
 import { SB_PRESETS } from './sb_presets';
@@ -87,7 +87,6 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
         // 1. PRIORITY BASS FILTER (Ambient/Foundry Purity)
-        // #ЗАЧЕМ: ПЛАН №3020. Запрет слэпа, разрешение мягкого блюза и джаза.
         if (part === 'bass') {
             if (genre === 'ambient' || genre === 'foundry') {
                 const isForbidden = clean.includes('slap') || clean.includes('rock') || clean.includes('pick');
@@ -98,125 +97,42 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
                 if (clean.includes('808')) return 'bass_808';
                 if (clean.includes('dark') || clean.includes('ambient')) return 'bass_ambient';
                 
-                // Дефолтный фоллбек - мягкий джаз
                 return 'bass_jazz_warm';
             }
         }
 
-        let registry = V2_PRESETS;
-        if (genre === 'foundry') {
-            registry = FOUNDRY_PRESETS;
-        } else if (genre === 'cyber_blues') {
-            registry = SB_PRESETS;
-        }
-
+        // 2. GENRE-SPECIFIC PRESET PREFIXING
+        const prefix = (genre === 'foundry') ? 'fo_' : (genre === 'cyber_blues' ? 'sb_' : '');
+        
         if (clean === 'violin' || clean === 'flute') return 'guitarChords';
 
         if (part === 'pianoAccompaniment') {
             if (clean === 'piano' || clean === 'acousticpiano' || clean === 'dynamicpianodual') {
-                 return tension < 0.6 ? 'ep_rhodes_warm' : 'piano';
+                 return tension < 0.6 ? (prefix + 'ep_rhodes_warm') : 'piano';
             }
-            if (clean === 'rhodes' || clean === 'eprhodeswarm') return 'ep_rhodes_warm';
+            if (clean === 'rhodes' || clean === 'eprhodeswarm') return prefix + 'ep_rhodes_warm';
         }
 
         if (clean === 'dynamicorgan') {
-            if (tension < 0.4) return 'organ_prog';
-            if (tension < 0.75) return 'organ_soft_jazz';
-            return 'organ'; 
+            if (tension < 0.4) return prefix + 'organ_prog';
+            if (tension < 0.75) return prefix + 'organ_soft_jazz';
+            return prefix + 'organ'; 
         }
         if (clean === 'dynamicpad') {
-            if (tension < 0.4) return 'synth'; 
-            if (tension < 0.75) return 'synth_ambient_pad_lush';
-            return 'synth_cave_pad';
+            if (tension < 0.4) return prefix + 'synth'; 
+            if (tension < 0.75) return prefix + 'synth_ambient_pad_lush';
+            return prefix + 'synth_cave_pad';
         }
 
-        if (clean === 'dynteledark' || clean === 'dyn_tele_dark') {
-            return tension < 0.6 ? 'telecaster' : 'darkTelecaster';
-        }
-        if (clean === 'dynblackteledark' || clean === 'dynamicblackshine') {
-            if (tension < 0.4) return 'blackAcoustic';
-            if (tension < 0.75) return 'telecaster';
-            return 'darkTelecaster';
-        }
-        if (clean === 'dyntelecs80black' || clean === 'dynamichybrid1') {
-            if (tension < 0.4) return 'telecaster';
-            if (tension < 0.75) return 'cs80';
-            return 'blackAcoustic';
-        }
-        if (clean === 'dynblackcs80tele' || clean === 'dynamichybrid2') {
-            if (tension < 0.4) return 'blackAcoustic';
-            if (tension < 0.75) return 'cs80';
-            return 'telecaster';
-        }
-        if (clean === 'dyntelecs80shine') {
-            if (tension < 0.4) return 'telecaster';
-            if (tension < 0.75) return 'cs80';
-            return 'guitar_shineOn';
-        }
-        if (clean === 'dyntelecs80muff') {
-            if (tension < 0.4) return 'telecaster';
-            if (tension < 0.75) return 'cs80';
-            return 'guitar_muffLead';
-        }
-        if (clean === 'dynblackcs80shine') {
-            if (tension < 0.4) return 'blackAcoustic';
-            if (tension < 0.75) return 'cs80';
-            return 'guitar_shineOn';
-        }
-        if (clean === 'dynblackcs80muff') {
-            if (tension < 0.4) return 'blackAcoustic';
-            if (tension < 0.75) return 'cs80';
-            return 'guitar_muffLead';
-        }
-        if (clean === 'dynshinemuff' || clean === 'dynamiclead') {
-            return tension < 0.7 ? 'guitar_shineOn' : 'guitar_muffLead';
-        }
+        // Mapping to unique prefixed IDs
+        const candidates = [
+            prefix + clean,
+            prefix + (V1_TO_V2_PRESET_MAP[clean] || clean),
+            clean
+        ];
 
-        if (clean === 'dynbassjazzstandard') return tension < 0.6 ? 'bass_jazz_warm' : 'bass_jazz_fretless';
-        if (clean === 'dynbassbluespower') {
-            if (tension < 0.4) return 'bass_jazz_warm';
-            if (tension < 0.75) return 'bass_blues';
-            return 'bass_slap';
-        }
-        if (clean === 'dynbasssubmorph') return tension < 0.6 ? 'bass_ambient' : 'bass_808';
-        if (clean === 'dynbassreggaedeep') return tension < 0.5 ? 'bass_jazz_warm' : 'bass_dub';
-        if (clean === 'dynbassacidspiral') return tension < 0.6 ? 'bass_808' : 'bass_trance_acid';
-        if (clean === 'dynbassblueswarm') return tension < 0.6 ? 'bass_blues' : 'bass_jazz_warm';
-        if (clean === 'dynbassblueswarmslap') {
-            if (tension < 0.4) return 'bass_blues';
-            if (tension < 0.75) return 'bass_jazz_warm';
-            return 'bass_slap';
-        }
-        if (clean === 'dynbass808ambient') return tension < 0.6 ? 'bass_808' : 'bass_ambient';
-
-        if (clean === 'dynrhodespiano') return tension < 0.6 ? 'ep_rhodes_warm' : 'piano';
-        if (clean === 'dynpianorhodes') return tension < 0.6 ? 'piano' : 'ep_rhodes_warm';
-
-        // 2. GENERAL REGISTRY MATCHING (Unified V2)
-        const matchedV2 = Object.keys(registry).find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === clean);
-        if (matchedV2) return matchedV2;
-        
-        const matchedBass = Object.keys(BASS_PRESETS).find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === clean);
-        if (matchedBass) return matchedBass;
-
-        if (part === 'melody') {
-            if (clean.includes('acoustic')) return 'blackAcoustic';
-            if (clean.includes('darktele')) return 'darkTelecaster';
-            if (clean.includes('tele')) return 'telecaster';
-            if (clean.includes('shine')) return 'guitar_shineOn';
-            if (clean.includes('muff')) return 'guitar_muffLead';
-            if (clean.includes('cs80')) return 'cs80';
-        }
-
-        if (part === 'accompaniment') {
-            const isPianoTimbre = clean === 'piano' || clean === 'rhodes' || clean === 'eprhodeswarm' || clean === 'pianoaccompaniment';
-            if (isPianoTimbre) return (genre === 'blues' || genre === 'cyber_blues') ? 'organ_soft_jazz' : 'synth_ambient_pad_lush';
-        }
-
-        if (clean === 'guitar' || clean === 'electricguitar' || clean === 'melody') {
-            if (tension < 0.45) return 'telecaster';
-            if (tension > 0.75) return 'guitar_muffLead';
-            return 'guitar_shineOn';
+        for (const cand of candidates) {
+            if (cand in UNIFIED_V2_REGISTRY) return cand;
         }
 
         if (part === 'bass') {

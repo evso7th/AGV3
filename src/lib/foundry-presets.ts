@@ -1,11 +1,10 @@
 /**
- * @fileOverview Foundry Presets Library V2.4 — "Resurrection".
- * #ЗАЧЕМ: Восстановление слышимости после избыточного затухания.
- * #ОБНОВЛЕНО (ПЛАН №3060): Громкость лидов и падов возвращена в рабочий диапазон.
+ * @fileOverview Foundry Presets Library V2.5 — "Unique Registry Fix".
+ * #ЗАЧЕМ: Устранение затенения (shadowing) через префиксы 'fo_'.
  */
 
 export const FOUNDRY_PRESETS = {
-  synth: { 
+  fo_synth: { 
     type: 'synth',
     name: 'Industrial Pulse Pad',
     volume: 0.75, 
@@ -21,7 +20,7 @@ export const FOUNDRY_PRESETS = {
     reverbMix: 0.08
   },
 
-  synth_ambient_pad_lush: {
+  fo_synth_ambient_pad_lush: {
     type: 'synth',
     name: 'Stable Steel Pad',
     volume: 0.72, 
@@ -36,7 +35,7 @@ export const FOUNDRY_PRESETS = {
     reverbMix: 0.12
   },
 
-  organ: {
+  fo_organ: {
     type: 'organ',
     name: 'Industrial B3 (Dirty)',
     volume: 0.65, 
@@ -49,7 +48,7 @@ export const FOUNDRY_PRESETS = {
     humanize: { detuneCents: 2.0, levelPct: 0.05, brightnessPct: 0.08 }
   },
 
-  organ_soft_jazz: {
+  fo_organ_soft_jazz: {
     type: 'organ',
     name: 'Gritty Jazz B3',
     volume: 0.62,
@@ -62,21 +61,21 @@ export const FOUNDRY_PRESETS = {
     humanize: { detuneCents: 2.0, levelPct: 0.05, brightnessPct: 0.06 }
   },
 
-  guitar_clean: {
+  fo_guitar_clean: {
     type: 'guitar',
     name: 'Clean Guitar',
     volume: 0.75, 
     osc: { width: 0.42 },
-    adsr: { a: 0.005, d: 0.25, s: 0.6, r: 0.6 },
+    adsr: { a: 0.005, d: 0.25, s: 0.6, r: 0.6 }, 
     lpf: 5000, 
     pluckBrightness: 0.8,
-    reverbMix: 0.05
+    reverbMix: 0
   },
 
-  guitar_shineOn: {
+  fo_guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.60, // Восстановлено (было 0.03)
+    volume: 0.60, 
     osc: { width: 0.46 },
     drive: { type: 'muff', amount: 0.55 },
     post: { lpf: 5000 }, 
@@ -89,10 +88,10 @@ export const FOUNDRY_PRESETS = {
     calibrationTrimDb: 7.54
   },
 
-  guitar_muffLead: {
+  fo_guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead (Warm Grit)',
-    volume: 0.55, // Восстановлено (было 0.02)
+    volume: 0.55, 
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.65 },
     post: { lpf: 4200 },
@@ -105,7 +104,7 @@ export const FOUNDRY_PRESETS = {
     calibrationTrimDb: 3.13
   },
 
-  synth_cave_pad: {
+  fo_synth_cave_pad: {
     type: 'synth',
     name: 'Industrial Abyssal Wall',
     volume: 0.78,
@@ -120,7 +119,7 @@ export const FOUNDRY_PRESETS = {
     reverbMix: 0.25
   },
 
-  ep_rhodes_warm: {
+  fo_ep_rhodes_warm: {
     type: 'synth',
     name: 'Warm Rhodes',
     volume: 0.72,

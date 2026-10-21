@@ -37,8 +37,8 @@
     "values": {
       "master": 0.70,
       "bass": 0.80,
-      "melody": 0.25,
-      "accompaniment": 0.45,
+      "melody": 0.50,
+      "accompaniment": 0.90,
       "pianoAccompaniment": 0.075,
       "harmony": 0.0375,
       "sparkles": 0.50,

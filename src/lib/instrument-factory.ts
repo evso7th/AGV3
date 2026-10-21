@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V15.3 — "Audibility Fix".
- * #ЗАЧЕМ: Реализация ПЛАНА №3060. Восстановление баланса голосов.
+ * @fileOverview Центральная фабрика инструментов V15.4 — "Foundry Synthesis Fix".
+ * #ЗАЧЕМ: Усиление VOICE_BALANCE для компенсации низких входных уровней.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -23,8 +23,8 @@ const STEAL_PRIORITY: Record<string, number> = {
 
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.95,
-  melody: 0.45, // Восстановлено с 0.1125 для корректной слышимости
-  accompaniment: 0.35, // Слегка поднято с 0.30
+  melody: 0.65, // Усилено (было 0.45)
+  accompaniment: 0.55, // Усилено (было 0.35)
   drums: 0.65,
   sparkles: 0.65,
   sfx: 0.65,

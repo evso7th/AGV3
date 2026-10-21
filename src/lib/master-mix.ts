@@ -1,6 +1,6 @@
 /**
- * @fileOverview Master Mix Registry V5.1 — "Foundry Drum Arsenal Fix".
- * #ЗАЧЕМ: ПЛАН №3070 — Восстановление баланса ударных для Foundry.
+ * @fileOverview Master Mix Registry V5.2 — "Foundry Volume Boost".
+ * #ЗАЧЕМ: ПЛАН №3080 — Удвоение громкости синтеза для Foundry.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -27,11 +27,11 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     foundry: {
         bass: 0.75,               
-        melody: 0.25, 
-        accompaniment: 0.45,      
+        melody: 0.50, // Удвоено (было 0.25)
+        accompaniment: 0.90, // Удвоено (было 0.45)
         harmony: 0.035,           
         pianoAccompaniment: 0.035, 
-        drums: 0.35, // Значительно поднято для доминирования ритма
+        drums: 0.35, 
         sparkles: 0.50,
         sfx: 0.20
     },
