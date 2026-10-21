@@ -1,6 +1,6 @@
 /**
- * @fileOverview Master Mix Registry V4.9 — "Cyber Blues Refinement".
- * #ЗАЧЕМ: ПЛАН №3030 — Снижение громкости аккомпанемента для Neuro Space в 2 раза.
+ * @fileOverview Master Mix Registry V5.0 — "Foundry Audibility Fix".
+ * #ЗАЧЕМ: ПЛАН №3060 — Восстановление баланса для Foundry.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -20,14 +20,14 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     psybient: { 
         ...UNIVERSAL_IMPERIAL_MIX,
         melody: 0.1875, 
-        accompaniment: 0.40, // Снижено в 2 раза с 0.80
+        accompaniment: 0.40,
         pianoAccompaniment: 0.035,
         drums: 0.12
     },
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     foundry: {
         bass: 0.75,               
-        melody: 0.125,              
+        melody: 0.60, // Поднято с 0.125 для компенсации низкого преампа
         accompaniment: 0.75,      
         harmony: 0.035,           
         pianoAccompaniment: 0.035, 
@@ -48,7 +48,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     cyber_blues: {
         bass: 0.78,
         melody: 0.07, 
-        accompaniment: 0.27, // Снижено в 2 раза с 0.54
+        accompaniment: 0.27, 
         harmony: 0.53,        
         pianoAccompaniment: 0.56, 
         drums: 0.53,
