@@ -1,7 +1,7 @@
 /**
- * @fileOverview Audio Engine Context V85.0 — "Cruel Volume Control".
- * #ЗАЧЕМ: Реализация ПЛАНА №3050. Устранение всплесков громкости при смене тембров.
- * #ЧТО: Унификация преампов менеджеров и сэмплеров + принудительная синхронизация микшера.
+ * @fileOverview Audio Engine Context V85.1 — "Foundry Drums Activation".
+ * #ЗАЧЕМ: Исправление исчезновения ударных в Foundry (Gain Node Blockade).
+ * #ЧТО: Синхронизация громкости между стандартной и Foundry драм-машинами.
  */
 'use client';
 
@@ -247,7 +247,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       darkTelecasterSamplerRef.current?.setPreampGain(2.2 * electricBase); 
       iCs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * (gains.cs80 || 1.0));
       
-      // #ЗАЧЕМ: ПЛАН №3050. Синхронизация преампов менеджеров.
       melodyManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.electric * electricBase); 
       accompanimentManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.piano * pianoBase);
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * bassBase);
@@ -350,11 +349,18 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         return;
     }
     const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
+    
+    const now = audioContextRef.current?.currentTime || 0;
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
-        const now = audioContextRef.current.currentTime;
         gainNode.gain.cancelScheduledValues(now);
         gainNode.gain.setTargetAtTime(balancedVolume, now, 0.015);
+    }
+
+    // #ЗАЧЕМ: ПЛАН №3051. Синхронизация громкости Foundry-барабанов.
+    if (part === 'drums' && foundryDrumsGainNodeRef.current && audioContextRef.current) {
+        foundryDrumsGainNodeRef.current.gain.cancelScheduledValues(now);
+        foundryDrumsGainNodeRef.current.gain.setTargetAtTime(balancedVolume * 0.57, now, 0.015);
     }
   }, [setCalibrationGain]);
 
@@ -491,8 +497,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         recDestRef.current = recDest;
         broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
 
+        // #ЗАЧЕМ: ПЛАН №3051. Корректная инициализация Foundry-барабанов.
         foundryDrumsGainNodeRef.current = context.createGain();
-        foundryDrumsGainNodeRef.current.gain.value = 0.0; 
+        foundryDrumsGainNodeRef.current.gain.value = 0.5 * 0.65 * 0.57; 
         foundryDrumsGainNodeRef.current.connect(masterGainNodeRef.current!);
 
         ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'sfx', 'harmony', 'pianoAccompaniment'].forEach(p => {
@@ -571,7 +578,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (dnaSourcePreference === 'network' && typeof navigator !== 'undefined' && navigator.onLine) await refreshCloudAxioms();
         else { const i = await loadDnaFromCache(); if (!i) void refreshCloudAxioms(); }
         
-        // #ЗАЧЕМ: ПЛАН №3050. Жесткая синхронизация после инициализации.
         applyCalibration(calibrationGainsRef.current);
         
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
