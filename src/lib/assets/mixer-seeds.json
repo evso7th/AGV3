@@ -36,14 +36,14 @@
     "name": "DARK TRANCE DEFAULT",
     "values": {
       "master": 0.70,
-      "bass": 0.80,
-      "melody": 1.60,
-      "accompaniment": 0.90,
-      "pianoAccompaniment": 0.0175,
-      "harmony": 0.0375,
+      "bass": 0.37,
+      "melody": 0.90,
+      "accompaniment": 1.00,
+      "pianoAccompaniment": 0.05,
+      "harmony": 0.30,
       "sparkles": 0.50,
       "sfx": 0.20,
-      "drums": 0.35
+      "drums": 0.34
     },
     "genre": "foundry"
   },

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Master Mix Registry V5.4 — "Foundry Climax Balance".
- * #ЗАЧЕМ: ПЛАН №3100 — Усиление мелодии в 2 раза и подавление пианино для Foundry.
+ * @fileOverview Master Mix Registry V5.5 — "Visual Balance Alignment".
+ * #ЗАЧЕМ: ПЛАН №3110 — Приведение системных дефолтов в соответствие с эталонным скриншотом пользователя.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -26,12 +26,12 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     },
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     foundry: {
-        bass: 0.75,               
-        melody: 1.60, // Усилено в 2 раза (было 0.80)
-        accompaniment: 0.90, 
-        harmony: 0.035,           
-        pianoAccompaniment: 0.0175, // Снижено в 2 раза (было 0.035)
-        drums: 0.35, 
+        bass: 0.37,               
+        melody: 0.90, 
+        accompaniment: 1.00, 
+        harmony: 0.30,           
+        pianoAccompaniment: 0.05,
+        drums: 0.34, 
         sparkles: 0.50,
         sfx: 0.20
     },
