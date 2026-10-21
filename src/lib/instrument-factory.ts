@@ -1,6 +1,7 @@
 /**
- * @fileOverview Центральная фабрика инструментов V15.4 — "Foundry Synthesis Fix".
- * #ЗАЧЕМ: Усиление VOICE_BALANCE для компенсации низких входных уровней.
+ * @fileOverview Центральная фабрика инструментов V15.5 — "Center 50 Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3120. Внутренние веса настроены так, чтобы 50% на слайдере 
+ *         соответствовало идеальному миксу пользователя.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -21,15 +22,19 @@ const STEAL_PRIORITY: Record<string, number> = {
     'pianoAccompaniment': 4 
 };
 
+/**
+ * #ЗАЧЕМ: ПЛАН №3120. Коэффициенты для достижения "Золотого баланса" при слайдерах = 0.5.
+ * Расчет: (Target_Perceived_Level) / 0.5
+ */
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.95,
-  melody: 0.65, // Усилено (было 0.45)
-  accompaniment: 0.55, // Усилено (было 0.35)
-  drums: 0.65,
-  sparkles: 0.65,
-  sfx: 0.65,
-  harmony: 0.15, 
-  pianoAccompaniment: 0.3,
+  bass: 0.74,             // Скриншот: 0.37 -> 0.37/0.5 = 0.74
+  melody: 1.80,           // Скриншот: 0.90 -> 0.90/0.5 = 1.80
+  accompaniment: 2.00,    // Скриншот: 1.00 -> 1.00/0.5 = 2.00
+  drums: 0.68,            // Скриншот: 0.34 -> 0.34/0.5 = 0.68
+  sparkles: 1.00,         // Скриншот: 0.50 -> 0.50/0.5 = 1.00
+  sfx: 0.40,              // Скриншот: 0.20 -> 0.20/0.5 = 0.40
+  harmony: 0.60,          // Скриншот: 0.30 -> 0.30/0.5 = 0.60
+  pianoAccompaniment: 0.10, // Скриншот: 0.05 -> 0.05/0.5 = 0.10
 };
 
 export const setGlobalVoiceLimit = (limit: number) => {
