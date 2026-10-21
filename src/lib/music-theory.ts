@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.7 — "Unique Preset Resolution".
- * #ЗАЧЕМ: Возврат уникальных ID (fo_*, sb_*) для устранения конфликтов в реестре.
+ * @fileOverview Universal Music Theory Utilities V6.8 — "The Mincer Resolver".
+ * #ЗАЧЕМ: Поддержка бесшовных имен пресетов для Foundry.
  */
 
 import type { 
@@ -102,32 +102,32 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         }
 
         // 2. GENRE-SPECIFIC PRESET PREFIXING
-        const prefix = (genre === 'foundry') ? 'fo_' : (genre === 'cyber_blues' ? 'sb_' : '');
+        const prefix = (genre === 'foundry') ? 'fo' : (genre === 'cyber_blues' ? 'sb' : '');
         
         if (clean === 'violin' || clean === 'flute') return 'guitarChords';
 
         if (part === 'pianoAccompaniment') {
             if (clean === 'piano' || clean === 'acousticpiano' || clean === 'dynamicpianodual') {
-                 return tension < 0.6 ? (prefix + 'ep_rhodes_warm') : 'piano';
+                 return tension < 0.6 ? (prefix + 'eprhodeswarm') : 'piano';
             }
-            if (clean === 'rhodes' || clean === 'eprhodeswarm') return prefix + 'ep_rhodes_warm';
+            if (clean === 'rhodes' || clean === 'eprhodeswarm') return prefix + 'eprhodeswarm';
         }
 
         if (clean === 'dynamicorgan') {
-            if (tension < 0.4) return prefix + 'organ_prog';
-            if (tension < 0.75) return prefix + 'organ_soft_jazz';
+            if (tension < 0.4) return prefix + 'organprog';
+            if (tension < 0.75) return prefix + 'organsoftjazz';
             return prefix + 'organ'; 
         }
         if (clean === 'dynamicpad') {
             if (tension < 0.4) return prefix + 'synth'; 
-            if (tension < 0.75) return prefix + 'synth_ambient_pad_lush';
-            return prefix + 'synth_cave_pad';
+            if (tension < 0.75) return prefix + 'synthambientpadlush';
+            return prefix + 'synthcavepad';
         }
 
-        // Mapping to unique prefixed IDs
+        // Mapping to unique prefixed IDs (cleaned version)
         const candidates = [
             prefix + clean,
-            prefix + (V1_TO_V2_PRESET_MAP[clean] || clean),
+            prefix + (V1_TO_V2_PRESET_MAP[clean] || clean).replace(/_/g, ''),
             clean
         ];
 

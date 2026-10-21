@@ -1,6 +1,6 @@
 /**
- * @fileOverview Dark Foundry Brain V8.3 — "Drum Power Restoration".
- * #ЗАЧЕМ: ПЛАН №3070. Усиление весов Kick/Snare и разнообразие перкуссии из DNA.
+ * @fileOverview Dark Foundry Brain V8.5 — "The Mincer Protocol".
+ * #ЗАЧЕМ: ПЛАН №3090. Гарантия плотности (одна нота на 2-3 такта — недопустимо).
  */
 
 import type {
@@ -237,7 +237,6 @@ export class DarkFoundryBrain {
         // 1. NEURO DRUMS (Locked 4/4 Foundation)
         if (hints.drums) {
             events.push(...this.renderFoundryDrums(epoch, tension, kit));
-            // #ЗАЧЕМ: ПЛАН №3070. Насыщенная перкуссия из DNA (смена сэмплов).
             if (this.currentDrumAxioms.length > 0) {
                 const axiomEvents = this.currentDrumAxioms.flatMap(ax => {
                     const localBar = Math.abs(mosaicBar) % this.phraseBarCount(ax.phrase);
@@ -245,11 +244,10 @@ export class DarkFoundryBrain {
                     return ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR)
                         .filter(n => n.deg !== 0 && n.deg !== 2) 
                         .map(n => {
-                            // Циклический выбор сэмпла на основе ноты
                             const percIdx = (n.deg % 5) + 1; 
                             return {
                                 type: `perc-00${percIdx}`, note: 60, time: (n.t - barOffset) * TICK_TO_BEAT,
-                                duration: 0.1, weight: 0.65, technique: 'hit'
+                                duration: 0.1, weight: 0.75, technique: 'hit'
                             };
                         });
                 });
@@ -265,14 +263,16 @@ export class DarkFoundryBrain {
             events.push(...b); 
         }
 
-        // 3. SYNTHESIS
+        // 3. SYNTHESIS (THE MINCER)
         let melodyEvents: FractalEvent[] = [];
         if (hints.melody) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension, mosaicBar);
             }
-            if (melodyEvents.length === 0) {
-                melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
+            
+            // #ЗАЧЕМ: ПЛАН №3090. Если мелодия слишком редкая или отсутствует - включаем "Мясорубку".
+            if (melodyEvents.length <= 1) {
+                melodyEvents.push(...this.renderMincerArp(epoch, resChord, tension));
             }
             events.push(...melodyEvents); 
         }
@@ -283,10 +283,9 @@ export class DarkFoundryBrain {
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('harmony') ? 'harmony' : (role.includes('accomp') ? 'accompaniment' : null));
             if (target && (hints as any)[target] && !usedTargetLayers.has(target)) {
                 let renders = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
-                renders = renders.filter(n => this.isGolden(n.time / TICK_TO_BEAT));
                 renders.forEach(n => {
                     n.note = this.wrapMelody(n.note);
-                    n.weight *= 0.85;
+                    n.weight *= 0.95;
                     n.duration *= 2.0; 
                 }); 
                 events.push(...renders); 
@@ -295,7 +294,7 @@ export class DarkFoundryBrain {
         });
         
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
-            events.push(...this.renderRhythmicPowerPad(epoch, resChord, tension)); 
+            events.push(...this.renderIndustrialPowerPad(epoch, resChord, tension)); 
         }
 
         events.push(...this.renderAtmosphericEvents(epoch, tension));
@@ -304,8 +303,8 @@ export class DarkFoundryBrain {
             events, tension, beautyScore: 0.95,
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
-            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Foundry Arp', ensemble: 'Power Protocol' },
-            narrative: `Foundry Evolution V8.3 | Full Drum Power | Multi-Percussion`
+            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Mincer Protocol', ensemble: 'Total Power' },
+            narrative: `Foundry V8.5 | Mincer Protocol ACTIVE | Industrial Power`
         };
     }
 
@@ -314,34 +313,25 @@ export class DarkFoundryBrain {
         const kickSample = kit.kick[this.rng.nextInt(kit.kick.length)];
         const snareSample = kit.snare[0] || 'drum_snare';
         
-        // #ЗАЧЕМ: ПЛАН №3070. Усиление весов для индустриального удара.
         [0, 3, 6, 9].forEach(t => events.push({ 
             type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, 
-            weight: 1.25, technique: 'hit', dynamics: 'ff', phrasing: 'staccato' 
+            weight: 1.4, technique: 'hit', dynamics: 'ff', phrasing: 'staccato' 
         }));
 
         [3, 9].forEach(t => events.push({ 
             type: snareSample as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, 
-            weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
+            weight: 1.3, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
         }));
 
-        // Хай-хэты
-        const hatProb = 0.5 + (tension * 0.5);
+        const hatProb = 0.6 + (tension * 0.4);
         [1.5, 4.5, 7.5, 10.5].forEach(t => {
             if (this.rng.next() < hatProb) {
                 events.push({ 
                     type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, 
-                    time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.75, technique: 'hit' 
+                    time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.85, technique: 'hit' 
                 });
             }
         });
-
-        // Тарелки и акценты при высоком напряжении
-        if (tension > 0.75 && epoch % 2 === 0) {
-            events.push({
-                type: 'drum_crash2', note: 49, time: 0, duration: 2.0, weight: 0.9, technique: 'hit'
-            });
-        }
 
         return events;
     }
@@ -352,7 +342,55 @@ export class DarkFoundryBrain {
         [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].forEach(t => {
             events.push({
                 type: 'bass', note: root, time: t * TICK_TO_BEAT, duration: 0.6 * TICK_TO_BEAT,
-                weight: 0.65, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
+                weight: 0.75, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
+            });
+        });
+        return events;
+    }
+
+    private renderMincerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        const root = chord.rootNote + 12 + this.microTransposition;
+        const scale = [0, 3, 7, 10, 12, 15]; // Industrial minor
+        
+        // 16-тые доли (0, 0.75, 1.5, 2.25...)
+        for (let t = 0; t < 12; t += 0.75) {
+            if (this.rng.next() < (0.6 + tension * 0.4)) {
+                const deg = scale[this.rng.nextInt(scale.length)];
+                events.push({
+                    type: 'melody', 
+                    note: this.wrapMelody(root + deg),
+                    time: t * TICK_TO_BEAT,
+                    duration: 0.4 * TICK_TO_BEAT,
+                    weight: this.isGolden(t) ? 1.1 : 0.8,
+                    technique: 'pick',
+                    dynamics: 'f',
+                    phrasing: 'staccato',
+                    params: { attack: 0.005, release: 0.15 }
+                });
+            }
+        }
+        return events;
+    }
+
+    private renderIndustrialPowerPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+        const root = chord.rootNote + 12 + this.microTransposition;
+        const intervals = [0, 7, 12]; 
+        const events: FractalEvent[] = [];
+
+        this.GOLDEN_TICKS.forEach(t => {
+            intervals.forEach(interval => {
+                events.push({
+                    type: 'accompaniment', 
+                    note: this.constrainAccompanimentOctave(root + interval),
+                    time: t * TICK_TO_BEAT, 
+                    duration: 3.2 * TICK_TO_BEAT, 
+                    weight: 0.7 + (tension * 0.2), 
+                    technique: 'swell', 
+                    dynamics: 'mf', 
+                    phrasing: 'legato',
+                    params: { attack: 0.1, release: 0.5, drive: 0.6 }
+                });
             });
         });
         return events;
@@ -367,7 +405,7 @@ export class DarkFoundryBrain {
         return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR)
             .map(n => ({
                 type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-                time: (n.t - barOffset) * TICK_TO_BEAT, duration: 1.2 * TICK_TO_BEAT, weight: 0.75, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
+                time: (n.t - barOffset) * TICK_TO_BEAT, duration: 1.2 * TICK_TO_BEAT, weight: 0.95, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
             }));
     }
 
@@ -384,10 +422,10 @@ export class DarkFoundryBrain {
             return {
                 type: 'melody', note: this.wrapMelody(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
                 time: (n.t - offset) * TICK_TO_BEAT, 
-                duration: (n.d * TICK_TO_BEAT) * (isGolden ? 2.2 : 1.0),
-                weight: isGolden ? 0.85 : 0.65, 
-                technique: 'pick', dynamics: 'mf', phrasing: 'legate', 
-                params: { attack: 0.05, release: isGolden ? 0.8 : 0.35 }
+                duration: (n.d * TICK_TO_BEAT) * (isGolden ? 2.5 : 1.2),
+                weight: isGolden ? 1.2 : 0.9, 
+                technique: 'pick', dynamics: 'f', phrasing: 'legate', 
+                params: { attack: 0.05, release: isGolden ? 1.2 : 0.5 }
             };
         });
     }
@@ -398,43 +436,7 @@ export class DarkFoundryBrain {
         const offset = localBar * TICKS_PER_BAR;
         return mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
             type, note: this.wrapMelody(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.55, technique: 'swell', dynamics: 'p', phrasing: 'legato'
-        }));
-    }
-
-    private renderRhythmicPowerPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        const root = chord.rootNote + 12 + this.microTransposition;
-        const intervals = [0, 7, 12]; 
-        const events: FractalEvent[] = [];
-
-        this.GOLDEN_TICKS.forEach(t => {
-            const hitChance = 0.5 + (tension * 0.4);
-            if (this.rng.next() < hitChance) {
-                intervals.forEach(interval => {
-                    events.push({
-                        type: 'accompaniment', 
-                        note: this.constrainAccompanimentOctave(root + interval),
-                        time: t * TICK_TO_BEAT, 
-                        duration: 2.8 * TICK_TO_BEAT, 
-                        weight: 0.45 + (tension * 0.15), 
-                        technique: 'swell', 
-                        dynamics: 'p', 
-                        phrasing: 'legato',
-                        params: { attack: 0.15, release: 0.6, drive: 0.4 }
-                    });
-                });
-            }
-        });
-        return events;
-    }
-
-    private renderShimmerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        const root = chord.rootNote + 24 + this.microTransposition; 
-        const scale = [0, 7, 12, 19];
-        const rawTicks = [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5];
-        return rawTicks.map(t => ({
-            type: 'melody', note: this.wrapMelody(root + scale[this.rng.nextInt(scale.length)]),
-            time: t * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.55, technique: 'pick', dynamics: 'p', phrasing: 'staccato'
+            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85, technique: 'swell', dynamics: 'mf', phrasing: 'legato'
         }));
     }
 
@@ -442,11 +444,11 @@ export class DarkFoundryBrain {
         const events: FractalEvent[] = [];
         const barDuration = (60 / 82) * 4;
         const currentTime = epoch * barDuration; 
-        if (currentTime - this.lastTextureTime >= 6) { 
-            if (this.rng.chance(60)) { 
+        if (currentTime - this.lastTextureTime >= 4) { 
+            if (this.rng.chance(70)) { 
                 this.lastTextureTime = currentTime;
                 events.push({
-                    type: 'sfx', note: 60, time: 0, duration: 2.5, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'legato',
+                    type: 'sfx', note: 60, time: 0, duration: 3.5, weight: 0.85, technique: 'hit', dynamics: 'f', phrasing: 'legato',
                     params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'dark', weight: 1.0 }] } }
                 });
             }

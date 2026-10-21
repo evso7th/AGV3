@@ -1,6 +1,6 @@
 /**
- * @fileOverview Master Mix Registry V5.2 — "Foundry Volume Boost".
- * #ЗАЧЕМ: ПЛАН №3080 — Удвоение громкости синтеза для Foundry.
+ * @fileOverview Master Mix Registry V5.3 — "Mincer Power Boost".
+ * #ЗАЧЕМ: ПЛАН №3090 — Радикальное усиление синтеза для Foundry.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -27,8 +27,8 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     foundry: {
         bass: 0.75,               
-        melody: 0.50, // Удвоено (было 0.25)
-        accompaniment: 0.90, // Удвоено (было 0.45)
+        melody: 0.80, // Максимум (было 0.50)
+        accompaniment: 1.20, // Сверх-лимит (было 0.90)
         harmony: 0.035,           
         pianoAccompaniment: 0.035, 
         drums: 0.35, 
