@@ -37,13 +37,13 @@
     "values": {
       "master": 0.70,
       "bass": 0.80,
-      "melody": 0.60,
-      "accompaniment": 0.75,
+      "melody": 0.25,
+      "accompaniment": 0.45,
       "pianoAccompaniment": 0.075,
       "harmony": 0.0375,
       "sparkles": 0.50,
       "sfx": 0.20,
-      "drums": 0.0458
+      "drums": 0.35
     },
     "genre": "foundry"
   },

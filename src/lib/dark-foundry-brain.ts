@@ -1,8 +1,6 @@
 /**
- * @fileOverview Dark Foundry Brain V8.2 — "Subtle Rhythm Evolution".
- * #ЗАЧЕМ: ПЛАН №2930. 1. Незыблемый фундамент 4/4 (0,3,6,9).
- *       2. Вариативность хэтов и ghosts по Tension.
- *       3. Фильтрация Heritage DNA от Kick/Snare.
+ * @fileOverview Dark Foundry Brain V8.3 — "Drum Power Restoration".
+ * #ЗАЧЕМ: ПЛАН №3070. Усиление весов Kick/Snare и разнообразие перкуссии из DNA.
  */
 
 import type {
@@ -239,17 +237,21 @@ export class DarkFoundryBrain {
         // 1. NEURO DRUMS (Locked 4/4 Foundation)
         if (hints.drums) {
             events.push(...this.renderFoundryDrums(epoch, tension, kit));
-            // #ЗАЧЕМ: ПЛАН №2930. Heritage DNA как подложка (фильтруем Kick/Snare).
+            // #ЗАЧЕМ: ПЛАН №3070. Насыщенная перкуссия из DNA (смена сэмплов).
             if (this.currentDrumAxioms.length > 0) {
                 const axiomEvents = this.currentDrumAxioms.flatMap(ax => {
                     const localBar = Math.abs(mosaicBar) % this.phraseBarCount(ax.phrase);
                     const barOffset = localBar * TICKS_PER_BAR;
                     return ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR)
-                        .filter(n => n.deg !== 0 && n.deg !== 2) // Фильтр Kick (deg 0) и Snare (deg 2) из маппинга
-                        .map(n => ({
-                            type: 'perc-001', note: 60, time: (n.t - barOffset) * TICK_TO_BEAT,
-                            duration: 0.1, weight: 0.25, technique: 'hit'
-                        }));
+                        .filter(n => n.deg !== 0 && n.deg !== 2) 
+                        .map(n => {
+                            // Циклический выбор сэмпла на основе ноты
+                            const percIdx = (n.deg % 5) + 1; 
+                            return {
+                                type: `perc-00${percIdx}`, note: 60, time: (n.t - barOffset) * TICK_TO_BEAT,
+                                duration: 0.1, weight: 0.65, technique: 'hit'
+                            };
+                        });
                 });
                 events.push(...axiomEvents as FractalEvent[]);
             }
@@ -303,7 +305,7 @@ export class DarkFoundryBrain {
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
             activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Foundry Arp', ensemble: 'Power Protocol' },
-            narrative: `Foundry Evolution V8.2 | Subtle Rhythm | Tension Dynamics`
+            narrative: `Foundry Evolution V8.3 | Full Drum Power | Multi-Percussion`
         };
     }
 
@@ -312,37 +314,32 @@ export class DarkFoundryBrain {
         const kickSample = kit.kick[this.rng.nextInt(kit.kick.length)];
         const snareSample = kit.snare[0] || 'drum_snare';
         
-        // #ЗАЧЕМ: ПЛАН №2930. Незыблемый фундамент 4/4.
+        // #ЗАЧЕМ: ПЛАН №3070. Усиление весов для индустриального удара.
         [0, 3, 6, 9].forEach(t => events.push({ 
             type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, 
-            weight: 0.55, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
+            weight: 1.25, technique: 'hit', dynamics: 'ff', phrasing: 'staccato' 
         }));
 
         [3, 9].forEach(t => events.push({ 
             type: snareSample as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, 
-            weight: 0.65, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
+            weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
         }));
 
-        // #ЗАЧЕМ: Деликатное разнообразие (хэты зависят от Tension).
-        const hatProb = 0.3 + (tension * 0.6);
+        // Хай-хэты
+        const hatProb = 0.5 + (tension * 0.5);
         [1.5, 4.5, 7.5, 10.5].forEach(t => {
             if (this.rng.next() < hatProb) {
                 events.push({ 
                     type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, 
-                    time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.45, technique: 'hit' 
+                    time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.75, technique: 'hit' 
                 });
             }
         });
 
-        // Ghost notes малого барабана (только при высоком напряжении)
-        if (tension > 0.65) {
-            [1, 4, 7, 10].forEach(t => {
-                if (this.rng.next() < (tension - 0.5)) {
-                    events.push({
-                        type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT,
-                        duration: 0.05, weight: 0.15, technique: 'ghost'
-                    });
-                }
+        // Тарелки и акценты при высоком напряжении
+        if (tension > 0.75 && epoch % 2 === 0) {
+            events.push({
+                type: 'drum_crash2', note: 49, time: 0, duration: 2.0, weight: 0.9, technique: 'hit'
             });
         }
 
@@ -389,7 +386,7 @@ export class DarkFoundryBrain {
                 time: (n.t - offset) * TICK_TO_BEAT, 
                 duration: (n.d * TICK_TO_BEAT) * (isGolden ? 2.2 : 1.0),
                 weight: isGolden ? 0.85 : 0.65, 
-                technique: 'pick', dynamics: 'mf', phrasing: 'legato', 
+                technique: 'pick', dynamics: 'mf', phrasing: 'legate', 
                 params: { attack: 0.05, release: isGolden ? 0.8 : 0.35 }
             };
         });
