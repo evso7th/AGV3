@@ -2,8 +2,8 @@ import type { FractalEvent, InstrumentType } from "@/types/fractal";
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Drum Machine V7.2 — "Strict Source Tracking".
- * #ЗАЧЕМ: Ликвидация утечек памяти через реестр активных источников.
+ * @fileOverview Drum Machine V7.3 — "Percussion Attenuation".
+ * #ЗАЧЕМ: ПЛАН №3170. Снижение громкости перкуссии (perc-) в 2.5 раза.
  */
 
 const DRUM_SAMPLES: Record<string, string> = {
@@ -213,8 +213,10 @@ export class DrumMachine {
             
             let velocity = event.weight;
             const isFill = event.params?.isFill === true;
+            
+            // #ЗАЧЕМ: ПЛАН №3170. Резкое снижение громкости перкуссии.
             if (sampleName.startsWith('perc-')) {
-                velocity *= isFill ? 1.0 : 0.8;
+                velocity *= isFill ? 0.4 : 0.3; // Снижено в 2.6 раза для баланса с киком
             } else if (sampleName.includes('ride') || sampleName.includes('crash')) {
                 velocity *= isFill ? 1.2 : 1.0;
             }
