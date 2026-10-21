@@ -1,6 +1,6 @@
 /**
- * @fileOverview Foundry Presets Library V2.8 — "Re-normalization".
- * #ЗАЧЕМ: Компенсация возросших системных множителей VOICE_BALANCE (План №3140).
+ * @fileOverview Foundry Presets Library V2.9 — "Piano 30-Point Offset".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3150. Калибровка Rhodes под 30% слайдер.
  */
 
 export const FOUNDRY_PRESETS = {
@@ -117,7 +117,7 @@ export const FOUNDRY_PRESETS = {
   foeprhodeswarm: {
     type: 'synth',
     name: 'Industrial Rhodes',
-    volume: 0.07, // #ЗАЧЕМ: ПЛАН №3140. Снижено для компенсации VOICE_BALANCE: 0.25.
+    volume: 0.12, // #ЗАЧЕМ: ПЛАН №3150. Калибровка: 0.3(slider) * 0.5(balance) * 0.12(preset) = 0.018.
     osc: [
       { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
       { type: 'triangle', octave: 1, detune: 0, gain: 0.2 }

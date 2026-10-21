@@ -39,7 +39,7 @@
       "bass": 0.5,
       "melody": 0.5,
       "accompaniment": 0.5,
-      "pianoAccompaniment": 0.5,
+      "pianoAccompaniment": 0.3,
       "harmony": 0.5,
       "sparkles": 0.5,
       "sfx": 0.5,

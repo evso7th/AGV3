@@ -1,7 +1,6 @@
 /**
- * @fileOverview Master Mix Registry V5.6 — "Center 50 Realignment".
- * #ЗАЧЕМ: Реализация ПЛАНА №3120. Установка дефолтных уровней в 0.5 
- *         для обеспечения запаса хода и корректного баланса.
+ * @fileOverview Master Mix Registry V5.7 — "Piano 30-Point Alignment".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3150. Установка пианино на 30% для Foundry.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -20,7 +19,10 @@ const CENTER_50_MIX: SoundMix = {
 export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     psybient: { ...CENTER_50_MIX },
     ambient: { ...CENTER_50_MIX },
-    foundry: { ...CENTER_50_MIX },
+    foundry: { 
+        ...CENTER_50_MIX,
+        pianoAccompaniment: 0.3 // #ЗАЧЕМ: ПЛАН №3150. Целевое положение ползунка 30%.
+    },
     blues: { ...CENTER_50_MIX },
     cyber_blues: { ...CENTER_50_MIX },
     reggae: { ...CENTER_50_MIX },

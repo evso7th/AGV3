@@ -1,5 +1,5 @@
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №3140): Ренормализация громкостей для соответствия новым VOICE_BALANCE.
+// #ОБНОВЛЕНО (ПЛАН №3150): Ренормализация Rhodes под целевой слайдер 30%.
 
 import { BASS_PRESETS } from './bass-presets';
 import { FOUNDRY_PRESETS } from './foundry-presets';
@@ -116,7 +116,7 @@ export const V2_PRESETS = {
   ep_rhodes: {
     type: 'synth',
     name: 'Warm Rhodes',
-    volume: 0.11, // #ЗАЧЕМ: ПЛАН №3140. Снижено для компенсации VOICE_BALANCE: 0.25.
+    volume: 0.18, // #ЗАЧЕМ: ПЛАН №3150. Калибровка под целевой слайдер 30%.
     osc: [
       { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
       { type: 'triangle', octave: 1, detune: 0, gain: 0.15 }
