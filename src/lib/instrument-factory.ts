@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Центральная фабрика инструментов V15.7 — "Gain Normalization".
  * #ЗАЧЕМ: Реализация ПЛАНА №3140/3150. Переход от микро-множителей к стандартным диапазонам (0.25 - 1.5).
@@ -306,18 +307,11 @@ const createIndependentVoice = (
     chainHead.connect(output);
 
     voiceGain.gain.setValueAtTime(0, now);
-
-    const technique = eventParams?.technique;
-    if (type === 'bass' && technique === 'slap') {
-        const percVolume = peak * 0.000001; 
-        voiceGain.gain.setValueAtTime(percVolume, now);
-        const effectiveAttack = Math.max(attackTime, 0.045); 
-        voiceGain.gain.linearRampToValueAtTime(peak, now + effectiveAttack);
-        voiceGain.gain.setTargetAtTime(peak * adsr.s, now + effectiveAttack, Math.max(adsr.d / 3, 0.001));
-    } else {
-        voiceGain.gain.linearRampToValueAtTime(peak, now + attackTime);
-        voiceGain.gain.setTargetAtTime(peak * adsr.s, now + attackTime, Math.max(adsr.d / 3, 0.001));
-    }
+    
+    // #ЗАЧЕМ: ПЛАН №3160. Удаление перкуссионной логики слэпа. 
+    // Теперь бас всегда входит плавно, предотвращая шлепки.
+    voiceGain.gain.linearRampToValueAtTime(peak, now + attackTime);
+    voiceGain.gain.setTargetAtTime(peak * adsr.s, now + attackTime, Math.max(adsr.d / 3, 0.001));
 
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
 
