@@ -1,13 +1,13 @@
 /**
- * @fileOverview Foundry Presets Library V2.7 — "Piano Attenuation".
- * #ЗАЧЕМ: Снижение громкости пианино для обеспечения пространства синтезаторам.
+ * @fileOverview Foundry Presets Library V2.8 — "Re-normalization".
+ * #ЗАЧЕМ: Компенсация возросших системных множителей VOICE_BALANCE (План №3140).
  */
 
 export const FOUNDRY_PRESETS = {
   fosynth: { 
     type: 'synth',
     name: 'Industrial Pulse Pad',
-    volume: 0.95, 
+    volume: 0.85, 
     osc: [
       { type: 'sawtooth', detune: 0, octave: 0, gain: 0.8 }, 
       { type: 'sine', detune: 0, octave: -1, gain: 0.45 } 
@@ -23,7 +23,7 @@ export const FOUNDRY_PRESETS = {
   fosynthambientpadlush: {
     type: 'synth',
     name: 'Stable Steel Pad',
-    volume: 0.9, 
+    volume: 0.8, 
     osc: [
       { type: 'sawtooth', detune: 0, octave: 0, gain: 0.7 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.5 }
@@ -38,7 +38,7 @@ export const FOUNDRY_PRESETS = {
   foorgan: {
     type: 'organ',
     name: 'Industrial B3 (Dirty)',
-    volume: 0.85, 
+    volume: 0.75, 
     drawbars: [8, 8, 8, 5, 0, 0, 0, 0, 0],
     adsr: { a: 0.01, d: 0.1, s: 0.9, r: 0.4 }, 
     lpf: 4200,
@@ -50,7 +50,7 @@ export const FOUNDRY_PRESETS = {
   foorgansoftjazz: {
     type: 'organ',
     name: 'Gritty Jazz B3',
-    volume: 0.8,
+    volume: 0.7,
     drawbars: [8, 0, 8, 4, 2, 0, 0, 0, 0],
     lpf: 2800,
     adsr: { a: 0.01, d: 0.1, s: 0.8, r: 0.4 }, 
@@ -61,7 +61,7 @@ export const FOUNDRY_PRESETS = {
   foguitarclean: {
     type: 'guitar',
     name: 'Industrial Clean',
-    volume: 0.85, 
+    volume: 0.75, 
     osc: { width: 0.42 },
     adsr: { a: 0.005, d: 0.25, s: 0.6, r: 0.6 }, 
     lpf: 6000, 
@@ -72,7 +72,7 @@ export const FOUNDRY_PRESETS = {
   foguitarshineon: {
     type: 'guitar',
     name: 'Industrial Shine Lead',
-    volume: 0.75, 
+    volume: 0.6, 
     osc: { width: 0.46 },
     drive: { type: 'muff', amount: 0.75 },
     post: { lpf: 5500 }, 
@@ -87,7 +87,7 @@ export const FOUNDRY_PRESETS = {
   foguitarmufflead: {
     type: 'guitar',
     name: 'Industrial Muff Lead',
-    volume: 0.82, 
+    volume: 0.65, 
     osc: { width: 0.5 },
     drive: { type: 'muff', amount: 0.95 },
     post: { lpf: 4800 },
@@ -102,7 +102,7 @@ export const FOUNDRY_PRESETS = {
   fosynthcavepad: {
     type: 'synth',
     name: 'Industrial Abyssal Wall',
-    volume: 0.95,
+    volume: 0.85,
     osc: [
       { type: 'sawtooth', detune: -15, octave: -2, gain: 0.7 },
       { type: 'square', detune: 15, octave: -2, gain: 0.6 },
@@ -117,7 +117,7 @@ export const FOUNDRY_PRESETS = {
   foeprhodeswarm: {
     type: 'synth',
     name: 'Industrial Rhodes',
-    volume: 0.45, // #ЗАЧЕМ: ПЛАН №3130. Снижено с 0.88 для баланса.
+    volume: 0.07, // #ЗАЧЕМ: ПЛАН №3140. Снижено для компенсации VOICE_BALANCE: 0.25.
     osc: [
       { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
       { type: 'triangle', octave: 1, detune: 0, gain: 0.2 }

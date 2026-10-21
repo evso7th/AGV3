@@ -1,5 +1,5 @@
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №3080): Уникальные ключи для Foundry и Cyber Blues.
+// #ОБНОВЛЕНО (ПЛАН №3140): Ренормализация громкостей для соответствия новым VOICE_BALANCE.
 
 import { BASS_PRESETS } from './bass-presets';
 import { FOUNDRY_PRESETS } from './foundry-presets';
@@ -12,7 +12,7 @@ export const V2_PRESETS = {
 
   synth: { 
     type: 'synth',
-    volume: 0.55,
+    volume: 0.45,
     osc: [
       { type: 'sawtooth', detune: -5, octave: 0, gain: 0.4 },
       { type: 'sawtooth', detune: +5, octave: 0, gain: 0.4 },
@@ -27,7 +27,7 @@ export const V2_PRESETS = {
   synth_ambient_pad_lush: {
     type: 'synth',
     name: 'Velvet Lush Pad',
-    volume: 0.55,
+    volume: 0.45,
     osc: [
       { type: 'sine', detune: -4, octave: 0, gain: 0.6 },
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.3 },
@@ -45,7 +45,7 @@ export const V2_PRESETS = {
   organ: {
     type: 'organ',
     name: 'Clean Organ',
-    volume: 0.4,
+    volume: 0.35,
     drawbars: [8, 8, 4, 0, 0, 0, 0, 0, 0],
     adsr: { a: 0.05, d: 0.1, s: 0.85, r: 0.8 },
     lpf: 1800,
@@ -57,7 +57,7 @@ export const V2_PRESETS = {
   organ_soft_jazz: {
     type: 'organ',
     name: 'Clean Jazz Organ',
-    volume: 0.4,
+    volume: 0.35,
     drawbars: [8, 0, 8, 2, 0, 0, 0, 0, 0],
     lpf: 1400,
     adsr: { a: 0.03, d: 0.1, s: 0.8, r: 0.6 },
@@ -73,7 +73,7 @@ export const V2_PRESETS = {
   guitar_clean: {
     type: 'guitar',
     name: 'Clean Guitar',
-    volume: 0.7,
+    volume: 0.6,
     osc: { width: 0.42 },
     adsr: { a: 0.005, d: 0.25, s: 0.6, r: 0.6 }, 
     lpf: 5000, 
@@ -84,7 +84,7 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.025, 
+    volume: 0.5, 
     osc: { width: 0.46 },
     drive: { type: 'soft', amount: 0.25 },
     post: { lpf: 5000 }, 
@@ -100,7 +100,7 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead (Warm Grit)',
-    volume: 0.015, 
+    volume: 0.45, 
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.4 },
     post: { lpf: 4000 },
@@ -116,7 +116,7 @@ export const V2_PRESETS = {
   ep_rhodes: {
     type: 'synth',
     name: 'Warm Rhodes',
-    volume: 0.68,
+    volume: 0.11, // #ЗАЧЕМ: ПЛАН №3140. Снижено для компенсации VOICE_BALANCE: 0.25.
     osc: [
       { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
       { type: 'triangle', octave: 1, detune: 0, gain: 0.15 }

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V15.6 — "Piano Attenuation".
- * #ЗАЧЕМ: Реализация ПЛАНА №3130. Снижение громкости пианино в 2.5 раза для баланса.
+ * @fileOverview Центральная фабрика инструментов V15.7 — "Gain Normalization".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3140. Переход от микро-множителей к стандартным диапазонам (0.25 - 1.5).
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -22,17 +22,18 @@ const STEAL_PRIORITY: Record<string, number> = {
 };
 
 /**
- * #ЗАЧЕМ: ПЛАН №3120/3130. Коэффициенты для достижения "Золотого баланса" при слайдерах = 0.5.
+ * #ЗАЧЕМ: ПЛАН №3140. Ренормализация системных весов.
+ * Теперь значения выглядят "нормально" (0.25 - 1.5), обеспечивая прозрачность кода.
  */
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.74,
-  melody: 1.80,
-  accompaniment: 2.00,
-  drums: 0.68,
-  sparkles: 1.00,
+  bass: 0.75,
+  melody: 1.50,
+  accompaniment: 1.50,
+  drums: 0.50,
+  sparkles: 0.80,
   sfx: 0.40,
   harmony: 0.60,
-  pianoAccompaniment: 0.04, // #ЗАЧЕМ: ПЛАН №3130. Снижено с 0.10 для устранения доминирования.
+  pianoAccompaniment: 0.25, // #ЗАЧЕМ: ПЛАН №3140. Установлено нормальное значение (1/4 мощности).
 };
 
 export const setGlobalVoiceLimit = (limit: number) => {
