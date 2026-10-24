@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.9 — "Entropy Restoration".
- * #ЗАЧЕМ: Расширение разнообразия выбора аксиом из облака (Top-20 Selection).
+ * @fileOverview Universal Music Theory Utilities V7.0 — "Warm Bass Enforcement".
+ * #ЗАЧЕМ: ПЛАН №3300. Глобальный приоритет Warm Jazz Bass и защита от клиппинга.
  */
 
 import type { 
@@ -49,12 +49,10 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /** 
  * #ЗАЧЕМ: Поиск резонансного филлера с защитой от "зацикливания".
- * #ЧТО: ПЛАН №3205. Выбор из ТОП-20 подходящих кандидатов вместо одного лучшего.
  */
 export function findGeneticFillerAxiom(pool: any[], role: string, tension: number, entropy: number = 0): any | null {
     if (!pool || pool.length === 0) return null;
     
-    // 1. Фильтруем по роли и доступности
     const rolePool = pool.filter(ax => {
         if (ax.ignored) return false;
         const axRole = (ax.role || '').toLowerCase();
@@ -65,24 +63,24 @@ export function findGeneticFillerAxiom(pool: any[], role: string, tension: numbe
     
     if (rolePool.length === 0) return null;
 
-    // 2. Считаем разницу напряжений для всех
     const candidates = rolePool.map(ax => ({
         ax,
         diff: Math.abs((ax.vector?.t || 0.5) - tension)
     }));
 
-    // 3. Сортируем по близости к цели
     candidates.sort((a, b) => a.diff - b.diff);
 
-    // 4. Берем окно из 20 лучших (или меньше, если пул мал)
     const windowSize = Math.min(20, candidates.length);
     const top20 = candidates.slice(0, windowSize);
 
-    // 5. Выбираем один вариант на основе энтропии (детерминированно для такта)
     const pickIdx = Math.abs(Math.floor(entropy)) % windowSize;
     return top20[pickIdx].ax;
 }
 
+/**
+ * #ЗАЧЕМ: Резолвер тембров.
+ * #ЧТО: ПЛАН №3300. bass_jazz_warm — единственный разрешенный бас при любых сомнениях.
+ */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     try {
         if (!hint || hint === 'none') return 'none';
@@ -99,22 +97,15 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         
         const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
-        // 1. PRIORITY BASS FILTER (Ambient/Foundry Purity)
+        // #ЗАЧЕМ: ПЛАН №3300. Тотальный заслон против шлепков.
         if (part === 'bass') {
-            if (genre === 'ambient' || genre === 'foundry') {
-                const isForbidden = clean.includes('slap') || clean.includes('rock') || clean.includes('pick');
-                if (isForbidden) return 'bass_jazz_warm'; 
-                
-                if (clean.includes('jazz') || clean.includes('warm')) return 'bass_jazz_warm';
-                if (clean.includes('blues')) return 'bass_blues';
-                if (clean.includes('808')) return 'bass_808';
-                if (clean.includes('dark') || clean.includes('ambient')) return 'bass_ambient';
-                
-                return 'bass_jazz_warm';
+            const isAggressive = clean.includes('slap') || clean.includes('rock') || clean.includes('pick') || clean.includes('acid') || clean.includes('house') || clean.includes('foundry');
+            if (isAggressive || genre === 'ambient' || genre === 'foundry' || genre === 'psybient') {
+                return 'bass_jazz_warm'; 
             }
+            return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
         }
 
-        // 2. GENRE-SPECIFIC PRESET PREFIXING
         const prefix = (genre === 'foundry') ? 'fo' : (genre === 'cyber_blues' ? 'sb' : '');
         
         if (clean === 'violin' || clean === 'flute') return 'guitarChords';
@@ -137,7 +128,6 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
             return prefix + 'synthcavepad';
         }
 
-        // Mapping to unique prefixed IDs (cleaned version)
         const candidates = [
             prefix + clean,
             prefix + (V1_TO_V2_PRESET_MAP[clean] || clean).replace(/_/g, ''),
@@ -148,13 +138,9 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
             if (cand in UNIFIED_V2_REGISTRY) return cand;
         }
 
-        if (part === 'bass') {
-            return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
-        }
-
         return V1_TO_V2_PRESET_MAP[targetHint] || V1_TO_V2_PRESET_MAP[clean] || String(targetHint);
     } catch (e) {
-        return 'synth'; 
+        return part === 'bass' ? 'bass_jazz_warm' : 'synth'; 
     }
 }
 

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V85.2 — "Bass Parameter Audit".
- * #ЗАЧЕМ: Логирование параметров басового пресета в реальном времени для отладки.
+ * @fileOverview Audio Engine Context V86.0 — "Master Limiter Implementation".
+ * #ЗАЧЕМ: Защита от цифрового клиппинга. Лимитер на мастере предотвращает хрипы при суммировании низких частот.
  */
 'use client';
 
@@ -356,7 +356,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         gainNode.gain.setTargetAtTime(balancedVolume, now, 0.015);
     }
 
-    // #ЗАЧЕМ: ПЛАН №3051. Синхронизация громкости Foundry-барабанов.
     if (part === 'drums' && foundryDrumsGainNodeRef.current && audioContextRef.current) {
         foundryDrumsGainNodeRef.current.gain.cancelScheduledValues(now);
         foundryDrumsGainNodeRef.current.gain.setTargetAtTime(balancedVolume * 0.57, now, 0.015);
@@ -488,7 +487,18 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         masterHPF.type = 'highpass'; masterHPF.frequency.value = 35; masterHPF.Q.value = 0.707;
         samplersMasterGainRef.current.connect(masterGainNodeRef.current); 
         masterGainNodeRef.current.connect(masterHPF);
-        masterHPF.connect(analyserNodeRef.current);
+
+        // #ЗАЧЕМ: мягкий клиппинг = бас выносит мастер за 0 dBFS. Ставим лимитер до анализатора.
+        const masterLimiter = context.createDynamicsCompressor();
+        masterLimiter.threshold.value = -3;
+        masterLimiter.knee.value = 0;
+        masterLimiter.ratio.value = 20;
+        masterLimiter.attack.value = 0.003;
+        masterLimiter.release.value = 0.25;
+
+        masterHPF.connect(masterLimiter);
+        masterLimiter.connect(analyserNodeRef.current);
+
         analyserNodeRef.current.connect(speakerGainNodeRef.current); 
         speakerGainNodeRef.current.connect(context.destination);
         const recDest = context.createMediaStreamDestination(); 
@@ -496,7 +506,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         recDestRef.current = recDest;
         broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
 
-        // #ЗАЧЕМ: ПЛАН №3051. Корректная инициализация Foundry-барабанов.
         foundryDrumsGainNodeRef.current = context.createGain();
         foundryDrumsGainNodeRef.current.gain.value = 0.5 * 0.65 * 0.57; 
         foundryDrumsGainNodeRef.current.connect(masterGainNodeRef.current!);
@@ -549,7 +558,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             if (type === 'SCORE_READY' && payload) {
                 if (!isPlayingRef.current) return;
 
-                // --- BASS PARAMETER AUDIT LOG ---
                 if (payload.instrumentHints?.bass) {
                     const bassPresetId = payload.instrumentHints.bass;
                     const bassPreset = BASS_PRESETS[bassPresetId as keyof typeof BASS_PRESETS];

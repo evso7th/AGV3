@@ -57,8 +57,8 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V47.2 — "Foundry Bass Lockdown".
- * #ЗАЧЕМ: Релаксация жесткого оверрайда баса для Foundry в пользу динамического резолвера.
+ * @fileOverview Fractal Music Engine V47.5 — "Global Warm Bass Standard".
+ * #ЗАЧЕМ: ПЛАН №3300. bass_jazz_warm становится абсолютным дефолтом.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -280,9 +280,8 @@ export class FractalMusicEngine {
 
                 let defaultInst = 'synth';
                 if (part === 'bass') {
-                    if (this.config.genre === 'psybient' || this.config.genre === 'foundry') defaultInst = 'bass_house';
-                    else if (this.config.genre === 'reggae') defaultInst = 'bass_jazz_warm';
-                    else defaultInst = 'bass_jazz_warm';
+                    // #ЗАЧЕМ: ПЛАН №3300. bass_jazz_warm — абсолютный дефолт для всех жанров.
+                    defaultInst = 'bass_jazz_warm';
                 }
                 else if (part === 'melody') {
                     if (this.config.genre === 'psybient' || this.config.genre === 'foundry') defaultInst = 'synth';
@@ -294,15 +293,12 @@ export class FractalMusicEngine {
                     else defaultInst = 'synth_ambient_pad_lush';
                 }
                 else if (part === 'harmony') {
-                    if (this.config.genre === 'reggae' || this.config.genre === 'foundry') defaultInst = 'guitarChords';
-                    else if (this.config.genre === 'blues' || this.config.genre === 'cyber_blues') defaultInst = 'guitarChords';
-                    else defaultInst = 'guitarChords';
+                    defaultInst = 'guitarChords';
                 }
                 else if (part === 'pianoAccompaniment') {
                     defaultInst = 'ep_rhodes_warm';
                 }
 
-                // #ЗАЧЕМ: ПЛАН №907. Сохраняем ГРУППУ (Hint), а не финальный инструмент.
                 this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || defaultInst;
             }
         }
@@ -311,7 +307,6 @@ export class FractalMusicEngine {
     this.activatedParts.forEach(part => {
         const isTransition = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
         if ((navInfo.currentPart.layers as any)[part] || isTransition) {
-            // #ЗАЧЕМ: РЕШЕНИЕ — Разрешаем тембр КАЖДЫЙ ТАКТ на основе текущего Tension.
             const rawHint = this.activeTimbres[part] || 'synth';
             instrumentHints[part] = resolveSemanticTimbre(rawHint, tension, part, this.config.genre);
         }
@@ -340,9 +335,8 @@ export class FractalMusicEngine {
         Object.assign(instrumentHints, result.instrumentOverrides);
     }
 
-    // #ЗАЧЕМ: Протокол "Bass Lockdown". Принудительная установка Warm Blues для тяжелых жанров.
-    // #ОБНОВЛЕНО: Foundry теперь обрабатывается через resolveSemanticTimbre для поддержки warm/ambient/808.
-    if (this.config.genre === 'cyber_blues') {
+    // #ЗАЧЕМ: ПЛАН №3300. Дублирующая защита на уровне Hints.
+    if (this.config.genre === 'cyber_blues' || this.config.genre === 'foundry' || this.config.genre === 'psybient') {
         instrumentHints.bass = 'bass_jazz_warm';
     }
 
