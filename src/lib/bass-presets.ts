@@ -1,11 +1,6 @@
 /**
- * @fileOverview Bass Presets V5.0 — "Warm & Round Only".
- * #ЗАЧЕМ: Ни один пресет не должен давать щипок/шлепок/клиппинг.
- * #ЧТО: 1. Только синусы (дроны — синус+синус), никаких sawtooth/square.
- *       2. Срез 320–550 Гц, Q ≤ 0.6.
- *       3. Атака 0.15–0.35, дека 1.2–2.5, сустейн ≥ 0.55.
- *       4. drive/stringNoise/filterEnv выключены; comp.makeup = 0; lowShelf ≤ +1 дБ.
- *       5. Дилей оставлен только dub/reggae, тихо.
+ * @fileOverview Bass Presets V5.1 — "Soft Compression Protocol".
+ * #ЗАЧЕМ: Смягчение компрессии для исключения перегрузок и артефактов.
  */
 
 export interface BassPreset {
@@ -35,7 +30,10 @@ export interface BassPreset {
   const NO_FILTER_ENV: BassPreset['filterEnv'] = { on: false, attack: 0.1, decay: 0.5, sustain: 0.6, release: 0.4, depth: 0, velocity: 0 };
   const NO_CHORUS: BassPreset['chorus'] = { on: false, rate: 0.2, depth: 0.003, mix: 0 };
   const NO_DELAY: BassPreset['delay'] = { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 1400 };
-  const SOFT_COMP: BassPreset['comp'] = { threshold: -22, ratio: 1.8, attack: 0.05, release: 0.35, makeup: 0 };
+
+  // #ЗАЧЕМ: ПЛАН №3350. Смягчение компрессии: attack 0.05 -> 0.08, ratio 1.8 -> 1.4.
+  const SOFT_COMP: BassPreset['comp'] = { threshold: -22, ratio: 1.4, attack: 0.08, release: 0.35, makeup: 0 };
+
   const ROUND_EQ: BassPreset['eq'] = {
     lowShelf: { freq: 70, gain: 1 },
     mid: { freq: 700, q: 1.1, gain: -3 },

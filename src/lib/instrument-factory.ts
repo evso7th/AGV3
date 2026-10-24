@@ -1,20 +1,8 @@
 /**
- * @fileOverview Центральная фабрика инструментов V17.0 — "Golden Chain Wired".
- * #ЗАЧЕМ: Все поля GOLDEN_BASS_CONFIG из bass-presets.ts должны реально влиять на звук,
- *         а не лежать мёртвым грузом (раньше фабрика читала только osc/adsr/drive/lpf).
- * #ЧТО:  1. sub (октава −1) с защитой от инфразвука и компенсацией уровня.
- *        2. filter.keyTrack — срез следит за высотой ноты (только бас).
- *        3. eq (lowShelf/mid/highShelf) на инструмент-шине (только бас).
- *        4. comp + makeup через DynamicsCompressor (только бас).
- *        5. reverbMix через ConvolverNode с синтетическим IR (только бас).
- *        6. stringNoise — механика на месте, включается флагом пресета (в golden off).
- *
- * ⚠️ ВАЖНО (не сломать снова): `preset.filter` — ключ ТОЛЬКО басовой схемы.
- *    Читать его вне `isBass` нельзя: у гитар/синтов срез живёт в `lpf`, и подстановка
- *    `preset.filter.q` давала резонансный «мяв» (см. историю коммитов 3914294e / c5935ee2).
- *
- * A/B: BASS_PURITY_CHAIN = false отключает comp/eq/reverb целиком (sub/keyTrack/stringNoise
- *      при этом остаются — они управляются полями пресета).
+ * @fileOverview Центральная фабрика инструментов V17.1 — "Eternal Bass Tail".
+ * #ЗАЧЕМ: Исключение щелчков при смене нот баса.
+ * #ЧТО:  1. Удален механизм "чока" баса в createIndependentVoice.
+ *        2. Гарантия сохранения полного expirationTime для всех голосов.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -116,7 +104,6 @@ const getADSR = (p: any, params?: any, type?: string) => {
     let rawS = isFinite(params?.sustain) ? params.sustain : (isFinite(a.s) ? a.s : (isFinite(a.sustain) ? a.sustain : 0.7));
     let rawR = isFinite(params?.release) ? params.release : (isFinite(a.r) ? a.r : (isFinite(a.release) ? a.release : 0.3));
     
-    // #ЗАЧЕМ: Мягкий вход баса — не даём атаке стать щелчком.
     if (type === 'bass') rawA = Math.max(rawA, 0.07);
     
     return { a: rawA, d: rawD, s: rawS, r: rawR };
@@ -167,7 +154,6 @@ const getDriveCurve = (type: string, amount: number): Float32Array => {
     return c;
 };
 
-// #ЗАЧЕМ: Буферы для stringNoise и reverbMix. Раньше эти поля пресета игнорировались.
 const noiseCache = new WeakMap<AudioContext, AudioBuffer>();
 const getNoiseBuffer = (ctx: AudioContext): AudioBuffer => {
     const cached = noiseCache.get(ctx); if (cached) return cached;
@@ -178,7 +164,6 @@ const getNoiseBuffer = (ctx: AudioContext): AudioBuffer => {
     noiseCache.set(ctx, buf); return buf;
 };
 
-// #ЗАЧЕМ: Синтетический импульс для reverbMix (детерминированно дешёвый, без внешних файлов).
 const irCache = new WeakMap<AudioContext, AudioBuffer>();
 const getReverbIR = (ctx: AudioContext): AudioBuffer => {
     const cached = irCache.get(ctx); if (cached) return cached;
@@ -194,10 +179,7 @@ const getReverbIR = (ctx: AudioContext): AudioBuffer => {
     irCache.set(ctx, buf); return buf;
 };
 
-// #ЗАЧЕМ: Единый выключатель «золотой» цепочки баса — для A/B без откатов.
 const BASS_PURITY_CHAIN = true;
-
-/** Ниже этой частоты саб-октава — инфразвук: HPF её срежет, а в миксе она даёт только муть. */
 const SUB_MIN_HZ = 35;
 
 const createIndependentVoice = (
@@ -223,9 +205,10 @@ const createIndependentVoice = (
 
     const attackTime = adsr.a;
     const releaseTime = adsr.r;
-    // #ЗАЧЕМ: let, а не const — уровень голоса корректируется при добавлении саба.
     let peak = velocity * (isEcho ? 0.65 : 0.45); 
 
+    // #ЗАЧЕМ: УДАЛЕН МЕХАНИЗМ ЧОКА. Ноты баса теперь перекрываются плавно.
+    /*
     if (type === 'bass') {
         globalActiveVoices.forEach(v => {
             if (v.instrumentId === instrumentId && !v.disposed) {
@@ -233,7 +216,6 @@ const createIndependentVoice = (
                 if (vNode) {
                     try {
                         vNode.gain.cancelScheduledValues(now);
-                        // #ЗАЧЕМ: Увеличенное время затухания для плавного перехода.
                         vNode.gain.setTargetAtTime(0, now, 0.08); 
                         v.expirationTime = now + 0.5;
                     } catch (e) {}
@@ -241,6 +223,7 @@ const createIndependentVoice = (
             }
         });
     }
+    */
 
     const voiceGain = ctx.createGain();
     voiceGain.gain.setValueAtTime(0, now);
@@ -288,8 +271,6 @@ const createIndependentVoice = (
             mainOscillators.push(osc);
         });
 
-        // #ЗАЧЕМ: GOLDEN_BASS_CONFIG.sub — саб-октава. Раньше поле игнорировалось.
-        // Включаем только если результат слышим: ниже SUB_MIN_HZ это инфразвук.
         let subApplied = 0;
         if (type === 'bass' && preset.sub?.on) {
             const subHz = f0 * Math.pow(2, preset.sub.octave ?? -1);
@@ -307,14 +288,12 @@ const createIndependentVoice = (
                 subApplied = preset.sub.gain ?? 0.5;
             }
         }
-        // #ЗАЧЕМ: Компенсация суммы осцилляторов — иначе саб добавит ~5 дБ к уровню баса.
         if (type === 'bass' && subApplied > 0) {
             peak *= oscGainSum / (oscGainSum + subApplied);
         }
     }
 
     let chainHead: AudioNode = voiceGain;
-    // #ЗАЧЕМ: Бас никогда не перегружаем — именно drive из мозга (cyber blues: 0.6/0.65) давал «шлепки».
     const driveAmount = type === 'bass' ? 0 : (eventParams?.drive ?? preset.drive?.amount ?? 0);
     const driveType = preset.drive?.type || 'soft';
 
@@ -331,25 +310,21 @@ const createIndependentVoice = (
     filter.type = 'lowpass';
 
     const isBass = type === 'bass';
-    // #ЗАЧЕМ: GOLDEN_BASS_CONFIG задаёт срез в `filter`, а не в `lpf`.
-    // Читаем этот ключ ТОЛЬКО для баса — у гитар/синтов он не из их схемы (иначе «мартовские коты»).
     const baseCutoff = isBass
         ? (preset.post?.lpf ?? preset.lpf?.cutoff ?? preset.filter?.cutoff ?? 2000)
         : (preset.post?.lpf || preset.lpf?.cutoff || 2000);
 
     let finalCutoff = baseCutoff;
     if (isBass && preset.filter?.keyTrack) {
-        // #ЗАЧЕМ: filter.keyTrack — срез следит за высотой ноты (0.1 = +10% на октаву), отсчёт от C2.
         finalCutoff *= Math.pow(2, (midi - 36) * preset.filter.keyTrack / 12);
     } else if (midi > 60) {
         finalCutoff = baseCutoff * Math.pow(0.92, midi - 60);
     }
 
-    // #ЗАЧЕМ: Темп не должен «открывать» бас — иначе на 120 BPM снова шлёпки.
     filter.frequency.value = finalCutoff * (isBass ? 1 : tempo / 72);
 
     if (isBass) {
-        filter.Q.value = preset.lpf?.q ?? preset.filter?.q ?? 0.7;  // golden: 0.5
+        filter.Q.value = preset.lpf?.q ?? preset.filter?.q ?? 0.7; 
     } else {
         filter.Q.value = type === 'guitar' ? 0.7 : (preset.lpf?.q || 0.7);
     }
@@ -358,8 +333,6 @@ const createIndependentVoice = (
     chainHead = filter;
     nodes.push(filter);
 
-    // #ЗАЧЕМ: stringNoise — короткий шумовой призвук струны на атаке.
-    // В golden выключен (on: false), но теперь это работающий флаг, а не мёртвый ключ.
     if (preset.stringNoise?.on && (preset.stringNoise.amount ?? 0) > 0.01) {
         const nz = ctx.createBufferSource();
         nz.buffer = getNoiseBuffer(ctx);
@@ -415,17 +388,14 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const panner = ctx.createStereoPanner();
     const hpf = ctx.createBiquadFilter();
     hpf.type = 'highpass';
-    // #ЗАЧЕМ: 32 Гц, а не 45 — иначе саб-октава баса (golden: sub octave −1) срезается на входе.
     hpf.frequency.value = type === 'bass' ? 32 : 150;
 
     const mudCut = ctx.createBiquadFilter();
     mudCut.type = 'peaking'; mudCut.frequency.value = 300; mudCut.gain.value = (type === 'bass') ? 0 : -3.5; 
     mudCut.Q.value = 1.0;
 
-    // ─── GOLDEN BASS PURITY: comp + eq + reverb. Только бас, только если поля есть в пресете. ───
     const pure = (BASS_PURITY_CHAIN && type === 'bass') ? currentPreset : null;
 
-    // 1. Компрессор: плотность и выравнивание динамики (golden: −22 дБ / 2:1 / makeup +2 дБ).
     const comp = pure?.comp ? ctx.createDynamicsCompressor() : null;
     const makeup = (comp && isFinite(pure?.comp?.makeup)) ? ctx.createGain() : null;
     const applyComp = (p: any) => {
@@ -439,7 +409,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     };
     applyComp(pure);
 
-    // 2. Трёхполосный EQ (golden: lowShelf +2@80, mid −4@800, highShelf −8@2500).
     const eqNodes: BiquadFilterNode[] = [];
     if (pure?.eq) {
         const low = ctx.createBiquadFilter();
@@ -461,14 +430,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     };
     applyEq(pure);
 
-    // 3. Реверберация: сухой сигнал в выход + доля mix через свёртку (golden: 0.05).
     const reverbMix = pure?.reverbMix ?? 0;
     const convolver = reverbMix > 0.001 ? ctx.createConvolver() : null;
     if (convolver) convolver.buffer = getReverbIR(ctx);
     const reverbWet = convolver ? ctx.createGain() : null;
     if (reverbWet) reverbWet.gain.value = reverbMix;
 
-    // Сборка шины: instrumentGain → [comp → makeup] → hpf → mudCut → [eq] → panner → (dry + reverb) → output.
     let head: AudioNode = instrumentGain;
     if (comp) { head.connect(comp); head = comp; }
     if (makeup) { head.connect(makeup); head = makeup; }
@@ -480,8 +447,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     tail.connect(panner);
 
     if (convolver && reverbWet) {
-        panner.connect(output);                                    // сухой путь
-        panner.connect(convolver);                                 // влажный путь
+        panner.connect(output); 
+        panner.connect(convolver);
         convolver.connect(reverbWet);
         reverbWet.connect(output);
     } else {
@@ -516,7 +483,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             currentPreset = { ...p };
             instrumentGain.gain.setTargetAtTime(p.volume || 0.7, ctx.currentTime, 0.05);
             updateFX();
-            // #ЗАЧЕМ: цепочка должна следовать за пресетом, иначе смена баса в Лаборатории не подхватит eq/comp.
             applyComp(p);
             applyEq(p);
             if (reverbWet) reverbWet.gain.setTargetAtTime(p.reverbMix ?? 0, ctx.currentTime, 0.05);
