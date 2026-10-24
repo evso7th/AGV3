@@ -558,6 +558,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             if (type === 'SCORE_READY' && payload) {
                 if (!isPlayingRef.current) return;
 
+                /* 
                 if (payload.instrumentHints?.bass) {
                     const bassPresetId = payload.instrumentHints.bass;
                     const bassPreset = BASS_PRESETS[bassPresetId as keyof typeof BASS_PRESETS];
@@ -569,6 +570,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                         );
                     }
                 }
+                */
 
                 const ctx = audioContextRef.current!;
                 setCurrentBar(payload.barCount); setTotalBars(payload.totalBars);
