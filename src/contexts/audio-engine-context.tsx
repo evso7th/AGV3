@@ -1,7 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V85.1 — "Foundry Drums Activation".
- * #ЗАЧЕМ: Исправление исчезновения ударных в Foundry (Gain Node Blockade).
- * #ЧТО: Синхронизация громкости между стандартной и Foundry драм-машинами.
+ * @fileOverview Audio Engine Context V85.2 — "Bass Parameter Audit".
+ * #ЗАЧЕМ: Логирование параметров басового пресета в реальном времени для отладки.
  */
 'use client';
 
@@ -300,7 +299,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           if (isMobile) {
               if (broadcastEngineRef.current && !broadcastEngineRef.current.isActive()) {
                   triggerStreamPulse();
-                  speakerGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.05); 
+                  speakerGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05); 
                   broadcastEngineRef.current.start();
                   setIsBroadcastActive(true);
               } else if (broadcastEngineRef.current?.isActive()) {
@@ -550,6 +549,19 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             if (type === 'SCORE_READY' && payload) {
                 if (!isPlayingRef.current) return;
 
+                // --- BASS PARAMETER AUDIT LOG ---
+                if (payload.instrumentHints?.bass) {
+                    const bassPresetId = payload.instrumentHints.bass;
+                    const bassPreset = BASS_PRESETS[bassPresetId as keyof typeof BASS_PRESETS];
+                    if (bassPreset) {
+                        console.log(
+                            `%c[Bass Audit] Bar ${payload.barCount} | ID: ${bassPresetId}`,
+                            'color: #f87171; font-weight: bold;',
+                            bassPreset
+                        );
+                    }
+                }
+
                 const ctx = audioContextRef.current!;
                 setCurrentBar(payload.barCount); setTotalBars(payload.totalBars);
                 if (payload.trackName) setCurrentTrackName(payload.trackName);
@@ -596,7 +608,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           } else {
               triggerStreamPulse();
               broadcastEngineRef.current.start();
-              speakerGainNodeRef.current.gain.setTargetAtTime(0.0, now, 0.05);
+              speakerGainNodeRef.current.gain.setTargetAtTime(1.0, now, 0.05);
               setIsBroadcastActive(true);
           }
       }

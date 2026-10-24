@@ -157,8 +157,9 @@ export const BASS_PRESET_MAP: Record<string, string> = {
 };
 
 export function getPreset(name: string): any {
-    const mapped = V1_TO_V2_PRESET_MAP[name] || name;
-    if (mapped in UNIFIED_V2_REGISTRY) return UNIFIED_V2_REGISTRY[mapped];
-    if (mapped in BASS_PRESETS) return BASS_PRESETS[mapped as keyof typeof BASS_PRESETS];
-    return UNIFIED_V2_REGISTRY.synth;
+  const mapped = V1_TO_V2_PRESET_MAP[name] || name;
+  if (mapped in UNIFIED_V2_REGISTRY) return UNIFIED_V2_REGISTRY[mapped];
+  if (mapped in BASS_PRESETS) return BASS_PRESETS[mapped as keyof typeof BASS_PRESETS];
+  // #ЗАЧЕМ: неизвестное имя не должно превращать бас в яркий synth (sawtooth).
+  return /bass/i.test(mapped) ? BASS_PRESETS.bass_jazz_warm : UNIFIED_V2_REGISTRY.synth;
 }

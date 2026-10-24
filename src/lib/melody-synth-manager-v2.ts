@@ -182,8 +182,9 @@ export class MelodySynthManagerV2 {
             return;
         }
         
-        if (currentActive === 'guitar_muffLead' || currentActive === 'guitar_shineOn') {
-            this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, true);
+        //if (currentActive === 'guitar_muffLead' || currentActive === 'guitar_shineOn') {
+            if (this.partName === 'melody' && (currentActive === 'guitar_muffLead' || currentActive === 'guitar_shineOn')) { 
+        this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
         
         notesToPlay.forEach(note => {
