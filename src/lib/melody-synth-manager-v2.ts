@@ -128,7 +128,7 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / boundedTempo;
 
         const notesToPlay = events.filter(e => normalizeEventType(e).has(this.partName)).map(e => {
-            const extraDuration = this.partName === 'bass' ? 2.5 : 1.2; 
+            const extraDuration = this.partName === 'bass' ? 0.6 : 1.2; 
             return { 
                 midi: e.note, 
                 time: e.time * beatDuration, 
