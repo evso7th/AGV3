@@ -1,7 +1,20 @@
-
 /**
- * @fileOverview Центральная фабрика инструментов V15.7 — "Gain Normalization".
- * #ЗАЧЕМ: Реализация ПЛАНА №3140/3150. Переход от микро-множителей к стандартным диапазонам (0.25 - 1.5).
+ * @fileOverview Центральная фабрика инструментов V17.0 — "Golden Chain Wired".
+ * #ЗАЧЕМ: Все поля GOLDEN_BASS_CONFIG из bass-presets.ts должны реально влиять на звук,
+ *         а не лежать мёртвым грузом (раньше фабрика читала только osc/adsr/drive/lpf).
+ * #ЧТО:  1. sub (октава −1) с защитой от инфразвука и компенсацией уровня.
+ *        2. filter.keyTrack — срез следит за высотой ноты (только бас).
+ *        3. eq (lowShelf/mid/highShelf) на инструмент-шине (только бас).
+ *        4. comp + makeup через DynamicsCompressor (только бас).
+ *        5. reverbMix через ConvolverNode с синтетическим IR (только бас).
+ *        6. stringNoise — механика на месте, включается флагом пресета (в golden off).
+ *
+ * ⚠️ ВАЖНО (не сломать снова): `preset.filter` — ключ ТОЛЬКО басовой схемы.
+ *    Читать его вне `isBass` нельзя: у гитар/синтов срез живёт в `lpf`, и подстановка
+ *    `preset.filter.q` давала резонансный «мяв» (см. историю коммитов 3914294e / c5935ee2).
+ *
+ * A/B: BASS_PURITY_CHAIN = false отключает comp/eq/reverb целиком (sub/keyTrack/stringNoise
+ *      при этом остаются — они управляются полями пресета).
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -22,10 +35,6 @@ const STEAL_PRIORITY: Record<string, number> = {
     'pianoAccompaniment': 4 
 };
 
-/**
- * #ЗАЧЕМ: ПЛАН №3150. Ренормализация системных весов.
- * Теперь значения выглядят "нормально" (0.4 - 1.5), обеспечивая прозрачность кода.
- */
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.75,
   melody: 1.50,
@@ -34,13 +43,12 @@ const VOICE_BALANCE: Record<string, number> = {
   sparkles: 0.80,
   sfx: 0.40,
   harmony: 0.60,
-  pianoAccompaniment: 0.50, // #ЗАЧЕМ: ПЛАН №3150. Поднято с 0.25 до 0.50 для целевого слайдера 30%.
+  pianoAccompaniment: 0.50,
 };
 
 export const setGlobalVoiceLimit = (limit: number) => {
     if (isFinite(limit) && limit > 0) {
         globalVoiceLimit = limit;
-        enforceVoiceLimit(); 
     }
 };
 
@@ -74,7 +82,6 @@ export const deepCleanup = (voiceRecord: any) => {
 
 export const collectExpiredVoices = (audioCtxTime: number) => {
     if (globalActiveVoices.size === 0) return;
-    
     const now = audioCtxTime;
     for (const voice of globalActiveVoices) {
         if (voice.expirationTime < now || voice.disposed) {
@@ -83,23 +90,18 @@ export const collectExpiredVoices = (audioCtxTime: number) => {
     }
 };
 
-const enforceVoiceLimit = () => {
+export const enforceVoiceLimit = () => {
     if (globalActiveVoices.size <= globalVoiceLimit) return;
-
     const toKillCount = globalActiveVoices.size - globalVoiceLimit;
     const allVoices = Array.from(globalActiveVoices).filter(v => !v.disposed);
-    
     allVoices.sort((a, b) => {
         const prioA = STEAL_PRIORITY[a.type] ?? 1;
         const prioB = STEAL_PRIORITY[b.type] ?? 1;
         if (prioA !== prioB) return prioA - prioB;
         return a.voiceState.startTime - b.voiceState.startTime;
     });
-
     const targets = allVoices.slice(0, toKillCount);
-    targets.forEach(oldest => {
-        deepCleanup(oldest);
-    });
+    targets.forEach(v => deepCleanup(v));
 };
 
 // ───── HELPERS ─────
@@ -107,28 +109,25 @@ const enforceVoiceLimit = () => {
 const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
-const getADSR = (p: any, params?: any) => {
+const getADSR = (p: any, params?: any, type?: string) => {
     const a = p.adsr || p;
     let rawA = isFinite(params?.attack) ? params.attack : (isFinite(a.a) ? a.a : (isFinite(a.attack) ? a.attack : 0.01));
     let rawD = isFinite(params?.decay) ? params.decay : (isFinite(a.d) ? a.d : (isFinite(a.decay) ? a.decay : 0.1));
     let rawS = isFinite(params?.sustain) ? params.sustain : (isFinite(a.s) ? a.s : (isFinite(a.sustain) ? a.sustain : 0.7));
     let rawR = isFinite(params?.release) ? params.release : (isFinite(a.r) ? a.r : (isFinite(a.release) ? a.release : 0.3));
+    
+    // #ЗАЧЕМ: Мягкий вход баса — не даём атаке стать щелчком.
+    if (type === 'bass') rawA = Math.max(rawA, 0.07);
+    
     return { a: rawA, d: rawD, s: rawS, r: rawR };
 };
 
 const waveCache = new WeakMap<AudioContext, Map<string, PeriodicWave>>();
-
 const getCachedWave = (ctx: AudioContext, key: string, build: () => PeriodicWave): PeriodicWave => {
     let perCtx = waveCache.get(ctx);
-    if (!perCtx) {
-        perCtx = new Map();
-        waveCache.set(ctx, perCtx);
-    }
+    if (!perCtx) { perCtx = new Map(); waveCache.set(ctx, perCtx); }
     let wave = perCtx.get(key);
-    if (!wave) {
-        wave = build();
-        perCtx.set(key, wave);
-    }
+    if (!wave) { wave = build(); perCtx.set(key, wave); }
     return wave;
 };
 
@@ -168,6 +167,39 @@ const getDriveCurve = (type: string, amount: number): Float32Array => {
     return c;
 };
 
+// #ЗАЧЕМ: Буферы для stringNoise и reverbMix. Раньше эти поля пресета игнорировались.
+const noiseCache = new WeakMap<AudioContext, AudioBuffer>();
+const getNoiseBuffer = (ctx: AudioContext): AudioBuffer => {
+    const cached = noiseCache.get(ctx); if (cached) return cached;
+    const len = Math.floor(ctx.sampleRate * 0.5);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    noiseCache.set(ctx, buf); return buf;
+};
+
+// #ЗАЧЕМ: Синтетический импульс для reverbMix (детерминированно дешёвый, без внешних файлов).
+const irCache = new WeakMap<AudioContext, AudioBuffer>();
+const getReverbIR = (ctx: AudioContext): AudioBuffer => {
+    const cached = irCache.get(ctx); if (cached) return cached;
+    const len = Math.floor(ctx.sampleRate * 1.2);
+    const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+        const d = buf.getChannelData(ch);
+        for (let i = 0; i < len; i++) {
+            const t = i / len;
+            d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 2.6);
+        }
+    }
+    irCache.set(ctx, buf); return buf;
+};
+
+// #ЗАЧЕМ: Единый выключатель «золотой» цепочки баса — для A/B без откатов.
+const BASS_PURITY_CHAIN = true;
+
+/** Ниже этой частоты саб-октава — инфразвук: HPF её срежет, а в миксе она даёт только муть. */
+const SUB_MIN_HZ = 35;
+
 const createIndependentVoice = (
     ctx: AudioContext,
     type: string,
@@ -183,16 +215,16 @@ const createIndependentVoice = (
     tempo: number = 72
 ) => {
     const f0 = midiToHz(midi);
-    const adsr = getADSR(preset, eventParams);
+    const adsr = getADSR(preset, eventParams, type);
     const now = Math.max(when, ctx.currentTime);
 
     const isEcho = eventParams?.isEcho === true;
     const isDub = eventParams?.isDub === true;
 
-    const attackTime = isDub ? 0.01 : (isEcho ? 1.8 : adsr.a);
-    const releaseTime = isEcho ? 4.5 : adsr.r;
-    
-    const peak = velocity * (isEcho ? 0.65 : 0.45); 
+    const attackTime = adsr.a;
+    const releaseTime = adsr.r;
+    // #ЗАЧЕМ: let, а не const — уровень голоса корректируется при добавлении саба.
+    let peak = velocity * (isEcho ? 0.65 : 0.45); 
 
     if (type === 'bass') {
         globalActiveVoices.forEach(v => {
@@ -201,8 +233,9 @@ const createIndependentVoice = (
                 if (vNode) {
                     try {
                         vNode.gain.cancelScheduledValues(now);
-                        vNode.gain.setTargetAtTime(0, now, 0.005);
-                        v.expirationTime = now + 0.1;
+                        // #ЗАЧЕМ: Увеличенное время затухания для плавного перехода.
+                        vNode.gain.setTargetAtTime(0, now, 0.08); 
+                        v.expirationTime = now + 0.5;
                     } catch (e) {}
                 }
             }
@@ -239,7 +272,9 @@ const createIndependentVoice = (
         mainOscillators.push(osc);
     } else {
         const oscConfigs = preset.osc || [{ type: 'sawtooth', gain: 0.5 }];
+        let oscGainSum = 0;
         oscConfigs.forEach((o: any) => {
+            oscGainSum += (o.gain ?? 0.5);
             const osc = ctx.createOscillator();
             osc.type = o.type;
             osc.frequency.setValueAtTime(f0 * Math.pow(2, o.octave || 0), now);
@@ -252,11 +287,35 @@ const createIndependentVoice = (
             nodes.push(osc, g);
             mainOscillators.push(osc);
         });
+
+        // #ЗАЧЕМ: GOLDEN_BASS_CONFIG.sub — саб-октава. Раньше поле игнорировалось.
+        // Включаем только если результат слышим: ниже SUB_MIN_HZ это инфразвук.
+        let subApplied = 0;
+        if (type === 'bass' && preset.sub?.on) {
+            const subHz = f0 * Math.pow(2, preset.sub.octave ?? -1);
+            if (subHz >= SUB_MIN_HZ) {
+                const subOsc = ctx.createOscillator();
+                subOsc.type = preset.sub.type || 'sine';
+                subOsc.frequency.setValueAtTime(subHz, now);
+                const sg = ctx.createGain();
+                sg.gain.value = preset.sub.gain ?? 0.5;
+                subOsc.connect(sg).connect(voiceGain);
+                subOsc.start(now);
+                subOsc.stop(expirationTime);
+                nodes.push(subOsc, sg);
+                mainOscillators.push(subOsc);
+                subApplied = preset.sub.gain ?? 0.5;
+            }
+        }
+        // #ЗАЧЕМ: Компенсация суммы осцилляторов — иначе саб добавит ~5 дБ к уровню баса.
+        if (type === 'bass' && subApplied > 0) {
+            peak *= oscGainSum / (oscGainSum + subApplied);
+        }
     }
 
     let chainHead: AudioNode = voiceGain;
-
-    const driveAmount = eventParams?.drive ?? preset.drive?.amount ?? 0;
+    // #ЗАЧЕМ: Бас никогда не перегружаем — именно drive из мозга (cyber blues: 0.6/0.65) давал «шлепки».
+    const driveAmount = type === 'bass' ? 0 : (eventParams?.drive ?? preset.drive?.amount ?? 0);
     const driveType = preset.drive?.type || 'soft';
 
     if (driveAmount > 0.01) {
@@ -268,71 +327,66 @@ const createIndependentVoice = (
         nodes.push(shaper);
     }
 
-    if (eventParams?.hpCutoff) {
-        const hpFilter = ctx.createBiquadFilter();
-        hpFilter.type = 'highpass';
-        hpFilter.frequency.value = eventParams.hpCutoff;
-        chainHead.connect(hpFilter);
-        chainHead = hpFilter;
-        nodes.push(hpFilter);
-    }
-
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    const baseCutoff = preset.post?.lpf || preset.lpf?.cutoff || 2000;
+
+    const isBass = type === 'bass';
+    // #ЗАЧЕМ: GOLDEN_BASS_CONFIG задаёт срез в `filter`, а не в `lpf`.
+    // Читаем этот ключ ТОЛЬКО для баса — у гитар/синтов он не из их схемы (иначе «мартовские коты»).
+    const baseCutoff = isBass
+        ? (preset.post?.lpf ?? preset.lpf?.cutoff ?? preset.filter?.cutoff ?? 2000)
+        : (preset.post?.lpf || preset.lpf?.cutoff || 2000);
+
     let finalCutoff = baseCutoff;
-    if (midi > 60) finalCutoff = baseCutoff * Math.pow(0.92, midi - 60);
-    filter.frequency.value = finalCutoff * (tempo / 72);
-    filter.Q.value = type === 'guitar' ? 0.7 : (preset.lpf?.q || 0.7);
+    if (isBass && preset.filter?.keyTrack) {
+        // #ЗАЧЕМ: filter.keyTrack — срез следит за высотой ноты (0.1 = +10% на октаву), отсчёт от C2.
+        finalCutoff *= Math.pow(2, (midi - 36) * preset.filter.keyTrack / 12);
+    } else if (midi > 60) {
+        finalCutoff = baseCutoff * Math.pow(0.92, midi - 60);
+    }
+
+    // #ЗАЧЕМ: Темп не должен «открывать» бас — иначе на 120 BPM снова шлёпки.
+    filter.frequency.value = finalCutoff * (isBass ? 1 : tempo / 72);
+
+    if (isBass) {
+        filter.Q.value = preset.lpf?.q ?? preset.filter?.q ?? 0.7;  // golden: 0.5
+    } else {
+        filter.Q.value = type === 'guitar' ? 0.7 : (preset.lpf?.q || 0.7);
+    }
 
     chainHead.connect(filter);
     chainHead = filter;
     nodes.push(filter);
 
-    if (preset.lfo && preset.lfo.amount > 0) {
-        const lfo = ctx.createOscillator();
-        lfo.type = preset.lfo.shape || 'sine';
-        lfo.frequency.setValueAtTime(preset.lfo.rate || 5, now);
-        const lfoGain = ctx.createGain();
-        lfoGain.gain.setValueAtTime(preset.lfo.amount, now);
-        lfo.connect(lfoGain);
-        if (preset.lfo.target === 'pitch') mainOscillators.forEach(osc => lfoGain.connect(osc.detune));
-        else lfoGain.connect(filter.frequency);
-        lfo.start(now);
-        lfo.stop(expirationTime);
-        nodes.push(lfo, lfoGain);
+    // #ЗАЧЕМ: stringNoise — короткий шумовой призвук струны на атаке.
+    // В golden выключен (on: false), но теперь это работающий флаг, а не мёртвый ключ.
+    if (preset.stringNoise?.on && (preset.stringNoise.amount ?? 0) > 0.01) {
+        const nz = ctx.createBufferSource();
+        nz.buffer = getNoiseBuffer(ctx);
+        const nf = ctx.createBiquadFilter();
+        nf.type = 'bandpass';
+        nf.frequency.value = Math.min(4000, Math.max(600, finalCutoff * 2));
+        nf.Q.value = 0.8;
+        const ng = ctx.createGain();
+        const nPeak = (preset.stringNoise.amount ?? 0) * velocity * 0.08;
+        ng.gain.setValueAtTime(0, now);
+        ng.gain.linearRampToValueAtTime(nPeak, now + 0.004);
+        ng.gain.setTargetAtTime(0, now + 0.004, 0.03);
+        nz.connect(nf).connect(ng).connect(chainHead);
+        nz.start(now); nz.stop(now + 0.25);
+        nodes.push(nz, nf, ng);
     }
 
     if (sharedDelayNode && (preset.delay?.mix > 0.01 || isDub)) chainHead.connect(sharedDelayNode);
     chainHead.connect(output);
 
     voiceGain.gain.setValueAtTime(0, now);
-    
-    // #ЗАЧЕМ: ПЛАН №3160. Удаление перкуссионной логики слэпа. 
-    // Теперь бас всегда входит плавно, предотвращая шлепки.
-    voiceGain.gain.linearRampToValueAtTime(peak, now + attackTime);
-    voiceGain.gain.setTargetAtTime(peak * adsr.s, now + attackTime, Math.max(adsr.d / 3, 0.001));
-
+    voiceGain.gain.linearRampToValueAtTime(peak * (VOICE_BALANCE[type] || 1.0), now + attackTime);
+    voiceGain.gain.setTargetAtTime(peak * adsr.s * (VOICE_BALANCE[type] || 1.0), now + attackTime, Math.max(adsr.d / 3, 0.001));
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
 
-    // Apply voice-specific balance
-    const partBalance = VOICE_BALANCE[type] || 1.0;
-    const finalPeak = peak * partBalance;
-    voiceGain.gain.cancelScheduledValues(now);
-    voiceGain.gain.setValueAtTime(0, now);
-    voiceGain.gain.linearRampToValueAtTime(finalPeak, now + attackTime);
-
-    const record = { 
-        nodes, 
-        voiceState: { node: voiceGain, startTime: now }, 
-        disposed: false, 
-        type, 
-        instrumentId, 
-        expirationTime 
-    };
+    const record = { nodes, voiceState: { node: voiceGain, startTime: now }, disposed: false, type, instrumentId, expirationTime };
     globalActiveVoices.add(record);
-    enforceVoiceLimit();
-
     return record; 
 };
 
@@ -343,6 +397,7 @@ export interface InstrumentAPI {
     allNotesOff: () => void;
     setPreset: (p: any) => void;
     setVolume: (level: number) => void;
+    dispose: () => void;
     preset: any;
 }
 
@@ -355,34 +410,83 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const instrumentId = `inst_${Math.random().toString(36).substr(2, 9)}`;
     let currentPreset = { ...preset };
     const instrumentGain = ctx.createGain();
-    
-    const initialVol = isFinite(currentPreset.volume) ? currentPreset.volume : 0.7;
-    instrumentGain.gain.setValueAtTime(initialVol, ctx.currentTime);
-    
-    const bus = ctx.createGain();
+    instrumentGain.gain.setValueAtTime(isFinite(currentPreset.volume) ? currentPreset.volume : 0.7, ctx.currentTime);
+
     const panner = ctx.createStereoPanner();
-    
     const hpf = ctx.createBiquadFilter();
-    hpf.type = 'highpass'; hpf.frequency.value = type === 'bass' ? 45 : 150;
+    hpf.type = 'highpass';
+    // #ЗАЧЕМ: 32 Гц, а не 45 — иначе саб-октава баса (golden: sub octave −1) срезается на входе.
+    hpf.frequency.value = type === 'bass' ? 32 : 150;
 
     const mudCut = ctx.createBiquadFilter();
-    mudCut.type = 'peaking'; 
-    mudCut.frequency.value = 300; 
-    mudCut.gain.value = (type === 'bass') ? 0 : -3.5; 
+    mudCut.type = 'peaking'; mudCut.frequency.value = 300; mudCut.gain.value = (type === 'bass') ? 0 : -3.5; 
     mudCut.Q.value = 1.0;
 
-    const boxyCut = ctx.createBiquadFilter();
-    boxyCut.type = 'peaking'; boxyCut.frequency.value = 500; boxyCut.gain.value = type === 'guitar' ? -3.5 : 0;
+    // ─── GOLDEN BASS PURITY: comp + eq + reverb. Только бас, только если поля есть в пресете. ───
+    const pure = (BASS_PURITY_CHAIN && type === 'bass') ? currentPreset : null;
 
-    const presence = ctx.createBiquadFilter();
-    presence.type = 'peaking'; presence.frequency.value = 2500; presence.gain.value = type === 'guitar' ? 2.5 : 0;
+    // 1. Компрессор: плотность и выравнивание динамики (golden: −22 дБ / 2:1 / makeup +2 дБ).
+    const comp = pure?.comp ? ctx.createDynamicsCompressor() : null;
+    const makeup = (comp && isFinite(pure?.comp?.makeup)) ? ctx.createGain() : null;
+    const applyComp = (p: any) => {
+        if (!comp || !p?.comp) return;
+        comp.threshold.value = p.comp.threshold ?? -22;
+        comp.ratio.value = p.comp.ratio ?? 2;
+        comp.attack.value = p.comp.attack ?? 0.01;
+        comp.release.value = p.comp.release ?? 0.2;
+        comp.knee.value = 6;
+        if (makeup) makeup.gain.value = dbToGain(p.comp.makeup ?? 0);
+    };
+    applyComp(pure);
 
-    instrumentGain.connect(hpf);
+    // 2. Трёхполосный EQ (golden: lowShelf +2@80, mid −4@800, highShelf −8@2500).
+    const eqNodes: BiquadFilterNode[] = [];
+    if (pure?.eq) {
+        const low = ctx.createBiquadFilter();
+        const mid = ctx.createBiquadFilter();
+        const high = ctx.createBiquadFilter();
+        low.type = 'lowshelf'; mid.type = 'peaking'; high.type = 'highshelf';
+        eqNodes.push(low, mid, high);
+    }
+    const applyEq = (p: any) => {
+        if (eqNodes.length !== 3 || !p?.eq) return;
+        const [low, mid, high] = eqNodes;
+        low.frequency.value = p.eq.lowShelf?.freq ?? 80;
+        low.gain.value = p.eq.lowShelf?.gain ?? 0;
+        mid.frequency.value = p.eq.mid?.freq ?? 800;
+        mid.Q.value = p.eq.mid?.q ?? 1.2;
+        mid.gain.value = p.eq.mid?.gain ?? 0;
+        high.frequency.value = p.eq.highShelf?.freq ?? 2500;
+        high.gain.value = p.eq.highShelf?.gain ?? 0;
+    };
+    applyEq(pure);
+
+    // 3. Реверберация: сухой сигнал в выход + доля mix через свёртку (golden: 0.05).
+    const reverbMix = pure?.reverbMix ?? 0;
+    const convolver = reverbMix > 0.001 ? ctx.createConvolver() : null;
+    if (convolver) convolver.buffer = getReverbIR(ctx);
+    const reverbWet = convolver ? ctx.createGain() : null;
+    if (reverbWet) reverbWet.gain.value = reverbMix;
+
+    // Сборка шины: instrumentGain → [comp → makeup] → hpf → mudCut → [eq] → panner → (dry + reverb) → output.
+    let head: AudioNode = instrumentGain;
+    if (comp) { head.connect(comp); head = comp; }
+    if (makeup) { head.connect(makeup); head = makeup; }
+    head.connect(hpf);
     hpf.connect(mudCut);
-    mudCut.connect(boxyCut);
-    boxyCut.connect(presence);
-    presence.connect(panner);
-    panner.connect(output);
+
+    let tail: AudioNode = mudCut;
+    eqNodes.forEach(n => { tail.connect(n); tail = n; });
+    tail.connect(panner);
+
+    if (convolver && reverbWet) {
+        panner.connect(output);                                    // сухой путь
+        panner.connect(convolver);                                 // влажный путь
+        convolver.connect(reverbWet);
+        reverbWet.connect(output);
+    } else {
+        panner.connect(output);
+    }
 
     const sharedDelay = ctx.createDelay(2.0);
     const feedback = ctx.createGain();
@@ -402,17 +506,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         preset: currentPreset,
         noteOn: (midi, when = ctx.currentTime, velocity = 1.0, duration = 1.0, params = null) => {
             if (!isFinite(midi) || midi < 0 || midi > 127) return;
-
-            if (params?.isDub) {
-                feedback.gain.cancelScheduledValues(when);
-                delayMix.gain.cancelScheduledValues(when);
-                feedback.gain.setTargetAtTime(0.82, when, 0.01);
-                delayMix.gain.setTargetAtTime(0.65, when, 0.01);
-                const recoveryTime = when + 4.0;
-                feedback.gain.setTargetAtTime(currentPreset.delay?.fb || 0.3, recoveryTime, 1.5);
-                delayMix.gain.setTargetAtTime(currentPreset.delay?.mix || 0, recoveryTime, 1.5);
-            }
-
             createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration, instrumentId, sharedDelay, params, params?.tempo || 72);
         },
         allNotesOff: () => {
@@ -423,15 +516,20 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             currentPreset = { ...p };
             instrumentGain.gain.setTargetAtTime(p.volume || 0.7, ctx.currentTime, 0.05);
             updateFX();
+            // #ЗАЧЕМ: цепочка должна следовать за пресетом, иначе смена баса в Лаборатории не подхватит eq/comp.
+            applyComp(p);
+            applyEq(p);
+            if (reverbWet) reverbWet.gain.setTargetAtTime(p.reverbMix ?? 0, ctx.currentTime, 0.05);
         },
-        setVolume: (v) => {
-            instrumentGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.02);
-        },
-        disconnect: () => {
+        setVolume: (v) => { instrumentGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.02); },
+        dispose: () => {
             const voicesToKill = Array.from(globalActiveVoices).filter(v => v.instrumentId === instrumentId);
             voicesToKill.forEach(v => deepCleanup(v));
-            [instrumentGain, hpf, mudCut, boxyCut, presence, panner, sharedDelay, feedback, delayMix].forEach(n => n.disconnect());
+            [instrumentGain, hpf, mudCut, panner, sharedDelay, feedback, delayMix,
+             comp, makeup, convolver, reverbWet, ...eqNodes].forEach(n => n?.disconnect());
         },
+        disconnect: () => { [instrumentGain, hpf, mudCut, panner, sharedDelay, feedback, delayMix,
+             comp, makeup, convolver, reverbWet, ...eqNodes].forEach(n => n?.disconnect()); },
         connect: (dest) => panner.connect(dest || output)
     };
 }
