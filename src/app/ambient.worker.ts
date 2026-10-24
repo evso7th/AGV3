@@ -1,7 +1,6 @@
 /**
- * @file AuraGroove Music Worker V7.7 — "Absolute Zero Start".
- * #ЗАЧЕМ: Гарантия полной очистки памяти и 2с паузы между треками. 
- * #ЧТО: ПЛАН №2700 — Межтрековое ожидание увеличено до 2000мс.
+ * @file AuraGroove Music Worker V7.8 — "Filler Diversity".
+ * #ЗАЧЕМ: Передача энтропии в GeneticMemoryDecorator для расширения репертуара пианиста.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -265,12 +264,14 @@ const Scheduler = {
         const foundChord = fractalMusicEngine.suiteDNA?.harmonyTrack.find(chord => this.barCount >= chord.bar && this.barCount < chord.bar + chord.durationBars);
         const currentRoot = foundChord?.rootNote || fractalMusicEngine.suiteDNA?.harmonyTrack[0].rootNote || 60;
 
+        // ПЛАН №3205: Передача энтропии (seed + barCount) для разнообразия филлеров
         const memorizedEvents = GeneticMemoryDecorator.fillGaps(
             payload.events,
             this.settings.genre,
             payload.tension,
             this.cloudAxiomPool,
-            currentRoot
+            currentRoot,
+            (this.settings.seed || 0) + this.barCount
         );
 
         const decoratedEvents = ShadowDrummer.decorate(

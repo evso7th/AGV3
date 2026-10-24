@@ -1,7 +1,7 @@
 /**
- * @fileOverview Genetic Memory Decorator V3.3 — "Strict Event Safety".
- * #ЗАЧЕМ: Предотвращение ошибок в менеджерах при отсутствии обязательных полей.
- * #ЧТО: Добавлены дефолтные technique, dynamics и phrasing для всех генерируемых событий.
+ * @fileOverview Genetic Memory Decorator V3.4 — "Diversity Engine".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3205. Внедрение энтропии для выбора филлеров.
+ * #ЧТО: Теперь филлеры выбираются из ТОП-20 подходящих мастерписов, что устраняет "эффект заезженной пластинки".
  */
 import { FractalEvent } from '@/types/music';
 import { 
@@ -28,7 +28,8 @@ export class GeneticMemoryDecorator {
         genre: string,
         tension: number,
         cloudAxioms: any[],
-        rootNote: number
+        rootNote: number,
+        entropy: number = 0
     ): FractalEvent[] {
         const isFoundry = genre === 'foundry';
 
@@ -38,14 +39,15 @@ export class GeneticMemoryDecorator {
             pianoFillerState = null;
         } else {
             if (pianoFillerState && pianoFillerState.iteration > 0 && pianoFillerState.iteration % 2 === 0 && pianoFillerState.currentBar === 0) {
-                const candidate = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
+                // ПЛАН №3205: Передаем entropy для ротации
+                const candidate = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension, entropy);
                 if (candidate && candidate.id !== pianoFillerState.axiom.id) {
                     pianoFillerState = this.createState(candidate);
                 }
             }
 
             if (!pianoFillerState) {
-                const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
+                const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension, entropy);
                 if (best) pianoFillerState = this.createState(best);
             }
             if (pianoFillerState) {
@@ -63,14 +65,15 @@ export class GeneticMemoryDecorator {
 
             if (isStagnant) {
                 if (melodyFillerState && melodyFillerState.iteration > 0 && melodyFillerState.iteration % 2 === 0 && melodyFillerState.currentBar === 0) {
-                    const candidate = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
+                    // ПЛАН №3205: Передаем entropy для ротации
+                    const candidate = findGeneticFillerAxiom(cloudAxioms, 'melody', tension, entropy + 42);
                     if (candidate && candidate.id !== melodyFillerState.axiom.id) {
                         melodyFillerState = this.createState(candidate);
                     }
                 }
 
                 if (!melodyFillerState) {
-                    const best = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
+                    const best = findGeneticFillerAxiom(cloudAxioms, 'melody', tension, entropy + 42);
                     if (best) melodyFillerState = this.createState(best);
                 }
                 if (melodyFillerState) {

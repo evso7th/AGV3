@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.8 — "The Mincer Resolver".
- * #ЗАЧЕМ: Поддержка бесшовных имен пресетов для Foundry.
+ * @fileOverview Universal Music Theory Utilities V6.9 — "Entropy Restoration".
+ * #ЗАЧЕМ: Расширение разнообразия выбора аксиом из облака (Top-20 Selection).
  */
 
 import type { 
@@ -47,9 +47,14 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
-/** #ЗАЧЕМ: Поиск резонансного филлера для гипнотической памяти. */
-export function findGeneticFillerAxiom(pool: any[], role: string, tension: number): any | null {
+/** 
+ * #ЗАЧЕМ: Поиск резонансного филлера с защитой от "зацикливания".
+ * #ЧТО: ПЛАН №3205. Выбор из ТОП-20 подходящих кандидатов вместо одного лучшего.
+ */
+export function findGeneticFillerAxiom(pool: any[], role: string, tension: number, entropy: number = 0): any | null {
     if (!pool || pool.length === 0) return null;
+    
+    // 1. Фильтруем по роли и доступности
     const rolePool = pool.filter(ax => {
         if (ax.ignored) return false;
         const axRole = (ax.role || '').toLowerCase();
@@ -57,17 +62,25 @@ export function findGeneticFillerAxiom(pool: any[], role: string, tension: numbe
         if (role === 'melody') return axRole === 'melody';
         return false;
     });
+    
     if (rolePool.length === 0) return null;
-    let best = rolePool[0];
-    let minDiff = Math.abs((best.vector?.t || 0.5) - tension);
-    for (const ax of rolePool) {
-        const diff = Math.abs((ax.vector?.t || 0.5) - tension);
-        if (diff < minDiff) {
-            minDiff = diff;
-            best = ax;
-        }
-    }
-    return best;
+
+    // 2. Считаем разницу напряжений для всех
+    const candidates = rolePool.map(ax => ({
+        ax,
+        diff: Math.abs((ax.vector?.t || 0.5) - tension)
+    }));
+
+    // 3. Сортируем по близости к цели
+    candidates.sort((a, b) => a.diff - b.diff);
+
+    // 4. Берем окно из 20 лучших (или меньше, если пул мал)
+    const windowSize = Math.min(20, candidates.length);
+    const top20 = candidates.slice(0, windowSize);
+
+    // 5. Выбираем один вариант на основе энтропии (детерминированно для такта)
+    const pickIdx = Math.abs(Math.floor(entropy)) % windowSize;
+    return top20[pickIdx].ax;
 }
 
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
