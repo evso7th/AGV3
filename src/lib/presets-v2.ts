@@ -1,5 +1,5 @@
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №3150): Ренормализация Rhodes под целевой слайдер 30%.
+// #ОБНОВЛЕНО (ПЛАН №3155): Синхронизация с V2.8 Synthesis Specification (Glass Acoustic, Liquid Lead).
 
 import { BASS_PRESETS } from './bass-presets';
 import { FOUNDRY_PRESETS } from './foundry-presets';
@@ -72,58 +72,59 @@ export const V2_PRESETS = {
 
   guitar_clean: {
     type: 'guitar',
-    name: 'Clean Guitar',
-    volume: 0.6,
+    name: 'Black Acoustic',
+    volume: 0.65,
     osc: { width: 0.42 },
-    adsr: { a: 0.005, d: 0.25, s: 0.6, r: 0.6 }, 
+    adsr: { a: 0.005, d: 0.25, s: 0.6, r: 2.5 }, // #ЗАЧЕМ: "Вельветовый Релиз"
     lpf: 5000, 
-    pluckBrightness: 0.8,
-    reverbMix: 0
+    pluckBrightness: 0.9, // #ЗАЧЕМ: "Стеклянный щипок"
+    reverbMix: 0,
+    calibrationTrimDb: -2.99
   },
 
   guitar_shineOn: {
     type: 'guitar',
-    name: 'Shine On Lead',
-    volume: 0.5, 
+    name: 'Liquid Shine Lead',
+    volume: 0.55, 
     osc: { width: 0.46 },
     drive: { type: 'soft', amount: 0.25 },
     post: { lpf: 5000 }, 
     adsr: { a: 0.020, d: 0.35, s: 0.65, r: 1.8 }, 
-    delay: { time: 0.42, fb: 0.32, mix: 0.24 },
-    reverbMix: 0,
+    delay: { time: 0.42, fb: 0.32, mix: 0.28 }, // #ЗАЧЕМ: Усиленный дилей
+    reverbMix: 0.08,
     attackTransient: 0.15,
-    pluckBrightness: 0.9,
-    vibrato: { rate: 5.0, depthCents: 8, delay: 0.40 },
+    pluckBrightness: 0.95,
+    vibrato: { rate: 5.2, depthCents: 12, delay: 0.40 },
     calibrationTrimDb: 7.54
   },
 
   guitar_muffLead: {
     type: 'guitar',
-    name: 'Muff Lead (Warm Grit)',
-    volume: 0.45, 
+    name: 'Muff Lead (Garage Grit)',
+    volume: 0.5, 
     osc: { width: 0.45 },
-    drive: { type: 'muff', amount: 0.4 },
+    drive: { type: 'muff', amount: 0.85 }, // #ЗАЧЕМ: Усиленный Muff (злее)
     post: { lpf: 4000 },
-    adsr: { a: 0.020, d: 0.5, s: 0.55, r: 1.0 }, 
+    adsr: { a: 0.018, d: 0.5, s: 0.55, r: 2.8 }, // #ЗАЧЕМ: Long Howl support
     delay: { time: 0.30, fb: 0.18, mix: 0.12 },
-    reverbMix: 0,
+    reverbMix: 0.12,
     attackTransient: 0.10,
-    pluckBrightness: 0.6,
-    vibrato: { rate: 5.5, depthCents: 10, delay: 0.30 },
-    calibrationTrimDb: 3.13
+    pluckBrightness: 0.7,
+    vibrato: { rate: 5.5, depthCents: 22, delay: 0.30 },
+    calibrationTrimDb: 4.5
   },
 
   ep_rhodes: {
     type: 'synth',
     name: 'Warm Rhodes',
-    volume: 0.18, // #ЗАЧЕМ: ПЛАН №3150. Калибровка под целевой слайдер 30%.
+    volume: 0.18, 
     osc: [
       { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
       { type: 'triangle', octave: 1, detune: 0, gain: 0.15 }
     ],
     adsr: { a: 0.01, d: 0.3, s: 0.6, r: 1.2 }, 
     lpf: { cutoff: 2400, q: 0.7 }, 
-    reverbMix: 0
+    reverbMix: 0.05
   }
 } as const;
 
@@ -160,6 +161,5 @@ export function getPreset(name: string): any {
   const mapped = V1_TO_V2_PRESET_MAP[name] || name;
   if (mapped in UNIFIED_V2_REGISTRY) return UNIFIED_V2_REGISTRY[mapped];
   if (mapped in BASS_PRESETS) return BASS_PRESETS[mapped as keyof typeof BASS_PRESETS];
-  // #ЗАЧЕМ: неизвестное имя не должно превращать бас в яркий synth (sawtooth).
   return /bass/i.test(mapped) ? BASS_PRESETS.bass_jazz_warm : UNIFIED_V2_REGISTRY.synth;
 }

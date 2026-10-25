@@ -1,6 +1,6 @@
 /**
- * @fileOverview Bass Presets V5.1 — "Soft Compression Protocol".
- * #ЗАЧЕМ: Смягчение компрессии для исключения перегрузок и артефактов.
+ * @fileOverview Bass Presets V5.2 — "Breathing Bass Standard".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3355. Внедрение Triangle Sub и динамических ADSR.
  */
 
 export interface BassPreset {
@@ -8,7 +8,7 @@ export interface BassPreset {
     name: string;
     volume: number;
     osc: { type: 'sine' | 'triangle'; octave?: number; detune?: number; gain?: number }[];
-    sub?: { on: boolean; type?: 'sine'; octave?: number; gain?: number };
+    sub?: { on: boolean; type?: 'sine' | 'triangle'; octave?: number; gain?: number };
     adsr: { a: number; d: number; s: number; r: number };
     filter?: { type: 'lowpass'; cutoff: number; q: number; keyTrack?: number };
     filterEnv?: { on: boolean; attack: number; decay: number; sustain: number; release: number; depth: number; velocity: number };
@@ -31,7 +31,6 @@ export interface BassPreset {
   const NO_CHORUS: BassPreset['chorus'] = { on: false, rate: 0.2, depth: 0.003, mix: 0 };
   const NO_DELAY: BassPreset['delay'] = { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 1400 };
 
-  // #ЗАЧЕМ: ПЛАН №3350. Смягчение компрессии: attack 0.05 -> 0.08, ratio 1.8 -> 1.4.
   const SOFT_COMP: BassPreset['comp'] = { threshold: -22, ratio: 1.4, attack: 0.08, release: 0.35, makeup: 0 };
 
   const ROUND_EQ: BassPreset['eq'] = {
@@ -41,7 +40,7 @@ export interface BassPreset {
   };
   
   export const BASS_PRESET_INFO: Record<string, { description: string; color: string } | null> = {
-    bass_jazz_warm: { description: 'Warm, round, finger-style jazz bass.', color: '#A0522D' },
+    bass_jazz_warm: { description: 'Warm, round, breathing upright bass.', color: '#A0522D' },
     bass_jazz_fretless: { description: 'Expressive "mwah" fretless, soft attack.', color: '#4682B4' },
     bass_blues: { description: 'Classic blues bass, round and even.', color: '#000080' },
     bass_ambient: { description: 'Deep, slow, atmospheric sub-bass.', color: '#2F4F4F' },
@@ -65,17 +64,17 @@ export interface BassPreset {
   
   export const BASS_PRESETS: Record<string, BassPreset> = {
     bass_jazz_warm: {
-      type: 'bass', name: 'Jazz Upright', volume: 0.52,
-      osc: [{ type: 'sine', octave: 0, detune: 0, gain: 0.8 }, { type: 'sine', octave: 1, detune: 0, gain: 0.03 }],
-      sub: { on: true, type: 'sine', octave: -1, gain: 0.4 },
-      adsr: { a: 0.18, d: 2.0, s: 0.65, r: 1.0 },
+      type: 'bass', name: 'Jazz Upright', volume: 0.55,
+      osc: [{ type: 'sine', octave: 0, detune: 0, gain: 0.8 }],
+      sub: { on: true, type: 'triangle', octave: -1, gain: 0.3 }, // #ЗАЧЕМ: Triangle для "зернистости"
+      adsr: { a: 0.10, d: 2.0, s: 0.70, r: 1.2 }, // #ЗАЧЕМ: "Вдох" 100мс
       filter: { type: 'lowpass', cutoff: 420, q: 0.5, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.05,
     },
     bass_slap: {
       type: 'bass', name: 'Soft Jazz (legacy)', volume: 0.52,
-      osc: [{ type: 'sine', octave: 0, detune: 0, gain: 0.8 }, { type: 'sine', octave: 1, detune: 0, gain: 0.03 }],
+      osc: [{ type: 'sine', octave: 0, detune: 0, gain: 0.8 }],
       sub: { on: true, type: 'sine', octave: -1, gain: 0.4 },
       adsr: { a: 0.18, d: 2.0, s: 0.65, r: 1.6 },
       filter: { type: 'lowpass', cutoff: 420, q: 0.5, keyTrack: 0.1 },

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Foundry Presets Library V2.9 — "Piano 30-Point Offset".
- * #ЗАЧЕМ: Реализация ПЛАНА №3150. Калибровка Rhodes под 30% слайдер.
+ * @fileOverview Foundry Presets Library V3.0 — "Industrial Warmth".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3160. Синхронизация с V2.8 Synthesis Specification.
  */
 
 export const FOUNDRY_PRESETS = {
@@ -16,7 +16,7 @@ export const FOUNDRY_PRESETS = {
     adsr: { a: 0.05, d: 0.3, s: 0.6, r: 0.3 }, 
     lpf: { cutoff: 3200, q: 2.5 }, 
     lfo: { rate: 0.4, amount: 800, target: 'filter' },
-    drive: { type: 'fuzz', amount: 0.65 },
+    drive: { type: 'fuzz', amount: 0.75 }, // #ЗАЧЕМ: Больше грязи
     reverbMix: 0.08
   },
 
@@ -31,7 +31,7 @@ export const FOUNDRY_PRESETS = {
     adsr: { a: 0.8, d: 1.2, s: 0.7, r: 0.8 }, 
     lpf: { cutoff: 1800, q: 1.5 }, 
     lfo: { rate: 0.1, amount: 400, target: 'filter' },
-    drive: { type: 'fuzz', amount: 0.45 },
+    drive: { type: 'fuzz', amount: 0.55 }, 
     reverbMix: 0.12
   },
 
@@ -43,8 +43,8 @@ export const FOUNDRY_PRESETS = {
     adsr: { a: 0.01, d: 0.1, s: 0.9, r: 0.4 }, 
     lpf: 4200,
     reverbMix: 0.08,
-    drive: { type: 'soft', amount: 0.85 },
-    leslie: { rate: 6.2, pitchDepth: 0.0001, ampDepth: 0.1, driftPct: 0.12, driftRate: 0.2 }
+    drive: { type: 'soft', amount: 0.90 }, 
+    leslie: { rate: 7.5, pitchDepth: 0.0001, ampDepth: 0.12, driftPct: 0.15, driftRate: 0.3 } // #ЗАЧЕМ: Быстрее Лесли
   },
 
   foorgansoftjazz: {
@@ -55,7 +55,7 @@ export const FOUNDRY_PRESETS = {
     lpf: 2800,
     adsr: { a: 0.01, d: 0.1, s: 0.8, r: 0.4 }, 
     reverbMix: 0.08,
-    drive: { type: 'soft', amount: 0.65 }
+    drive: { type: 'soft', amount: 0.75 }
   },
 
   foguitarclean: {
@@ -63,9 +63,9 @@ export const FOUNDRY_PRESETS = {
     name: 'Industrial Clean',
     volume: 0.75, 
     osc: { width: 0.42 },
-    adsr: { a: 0.005, d: 0.25, s: 0.6, r: 0.6 }, 
+    adsr: { a: 0.005, d: 0.25, s: 0.6, r: 1.5 }, 
     lpf: 6000, 
-    pluckBrightness: 0.9,
+    pluckBrightness: 0.95,
     reverbMix: 0.05
   },
 
@@ -74,7 +74,7 @@ export const FOUNDRY_PRESETS = {
     name: 'Industrial Shine Lead',
     volume: 0.6, 
     osc: { width: 0.46 },
-    drive: { type: 'muff', amount: 0.75 },
+    drive: { type: 'muff', amount: 0.85 }, // #ЗАЧЕМ: Сатурация до 85%
     post: { lpf: 5500 }, 
     adsr: { a: 0.02, d: 0.35, s: 0.75, r: 1.5 }, 
     delay: { time: 0.35, fb: 0.3, mix: 0.2 },
@@ -117,14 +117,14 @@ export const FOUNDRY_PRESETS = {
   foeprhodeswarm: {
     type: 'synth',
     name: 'Industrial Rhodes',
-    volume: 0.12, // #ЗАЧЕМ: ПЛАН №3150. Калибровка: 0.3(slider) * 0.5(balance) * 0.12(preset) = 0.018.
+    volume: 0.12, 
     osc: [
       { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
       { type: 'triangle', octave: 1, detune: 0, gain: 0.2 }
     ],
     adsr: { a: 0.01, d: 0.2, s: 0.6, r: 0.5 }, 
     lpf: { cutoff: 3500, q: 1.0 }, 
-    drive: { type: 'soft', amount: 0.4 },
+    drive: { type: 'soft', amount: 0.45 },
     reverbMix: 0.08
   }
 };
