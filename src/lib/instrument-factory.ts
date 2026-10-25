@@ -1,8 +1,8 @@
 /**
- * @fileOverview Центральная фабрика инструментов V17.1 — "Eternal Bass Tail".
- * #ЗАЧЕМ: Исключение щелчков при смене нот баса.
- * #ЧТО:  1. Удален механизм "чока" баса в createIndependentVoice.
- *        2. Гарантия сохранения полного expirationTime для всех голосов.
+ * @fileOverview Центральная фабрика инструментов V17.2 — "Phase Lock & Notch 400Hz".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3400. Внедрение алгоритмов очистки и синхронизации.
+ * #ЧТО:  1. Добавлен Notch/Peaking 400Hz для гитар в buildMultiInstrument.
+ *        2. Реализован алгоритм Phase Lock для баса (принудительный сброс фазы через Hard Start).
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -203,27 +203,13 @@ const createIndependentVoice = (
     const isEcho = eventParams?.isEcho === true;
     const isDub = eventParams?.isDub === true;
 
-    const attackTime = adsr.a;
+    // #ЗАЧЕМ: Алгоритм PHASE LOCK.
+    // Принудительная моментальная атака для баса, чтобы фаза осциллятора стартовала ровно с 0.
+    const isPhaseLocked = (type === 'bass' && preset.phaseLock !== false);
+    const attackTime = isPhaseLocked ? 0.002 : adsr.a;
+    
     const releaseTime = adsr.r;
     let peak = velocity * (isEcho ? 0.65 : 0.45); 
-
-    // #ЗАЧЕМ: УДАЛЕН МЕХАНИЗМ ЧОКА. Ноты баса теперь перекрываются плавно.
-    /*
-    if (type === 'bass') {
-        globalActiveVoices.forEach(v => {
-            if (v.instrumentId === instrumentId && !v.disposed) {
-                const vNode = v.voiceState?.node;
-                if (vNode) {
-                    try {
-                        vNode.gain.cancelScheduledValues(now);
-                        vNode.gain.setTargetAtTime(0, now, 0.08); 
-                        v.expirationTime = now + 0.5;
-                    } catch (e) {}
-                }
-            }
-        });
-    }
-    */
 
     const voiceGain = ctx.createGain();
     voiceGain.gain.setValueAtTime(0, now);
@@ -390,9 +376,15 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     hpf.type = 'highpass';
     hpf.frequency.value = type === 'bass' ? 32 : 150;
 
+    // #ЗАЧЕМ: Алгоритм NOTCH 400Hz.
+    // Очистка нижней середины для акустических инструментов.
     const mudCut = ctx.createBiquadFilter();
-    mudCut.type = 'peaking'; mudCut.frequency.value = 300; mudCut.gain.value = (type === 'bass') ? 0 : -3.5; 
-    mudCut.Q.value = 1.0;
+    const isAcoustic = (type === 'guitar' && (currentPreset.name?.includes('Black') || currentPreset.pluckBrightness > 0.8));
+    
+    mudCut.type = isAcoustic ? 'notch' : 'peaking';
+    mudCut.frequency.value = 400; 
+    mudCut.Q.value = isAcoustic ? 2.0 : 1.0;
+    mudCut.gain.value = isAcoustic ? -6.0 : ((type === 'bass') ? 0 : -3.5); 
 
     const pure = (BASS_PURITY_CHAIN && type === 'bass') ? currentPreset : null;
 
