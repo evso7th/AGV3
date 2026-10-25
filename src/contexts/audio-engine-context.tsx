@@ -296,16 +296,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
               masterGainNodeRef.current.gain.setTargetAtTime(calibrationGainsRef.current.master, context.currentTime, 0.05); 
           }
           
-          if (isMobile) {
-              if (broadcastEngineRef.current && !broadcastEngineRef.current.isActive()) {
-                  triggerStreamPulse();
-                  speakerGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05); 
-                  broadcastEngineRef.current.start();
-                  setIsBroadcastActive(true);
-              } else if (broadcastEngineRef.current?.isActive()) {
-                  triggerStreamPulse();
-                  broadcastEngineRef.current.poke();
-              }
+          // #ЗАЧЕМ: ПЛАН №3025. Мьютируем прямые динамики (0.0), чтобы избежать эхо при автозапуске моста.
+          if (broadcastEngineRef.current && !broadcastEngineRef.current.isActive()) {
+              triggerStreamPulse();
+              speakerGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.05); 
+              broadcastEngineRef.current.start();
+              setIsBroadcastActive(true);
+          } else if (broadcastEngineRef.current?.isActive()) {
+              triggerStreamPulse();
+              broadcastEngineRef.current.poke();
           }
 
           stopAllSounds(); 
@@ -558,20 +557,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             if (type === 'SCORE_READY' && payload) {
                 if (!isPlayingRef.current) return;
 
-                /* 
-                if (payload.instrumentHints?.bass) {
-                    const bassPresetId = payload.instrumentHints.bass;
-                    const bassPreset = BASS_PRESETS[bassPresetId as keyof typeof BASS_PRESETS];
-                    if (bassPreset) {
-                        console.log(
-                            `%c[Bass Audit] Bar ${payload.barCount} | ID: ${bassPresetId}`,
-                            'color: #f87171; font-weight: bold;',
-                            bassPreset
-                        );
-                    }
-                }
-                */
-
                 const ctx = audioContextRef.current!;
                 setCurrentBar(payload.barCount); setTotalBars(payload.totalBars);
                 if (payload.trackName) setCurrentTrackName(payload.trackName);
@@ -618,7 +603,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           } else {
               triggerStreamPulse();
               broadcastEngineRef.current.start();
-              speakerGainNodeRef.current.gain.setTargetAtTime(1.0, now, 0.05);
+              // #ЗАЧЕМ: Мьютируем прямые динамики, чтобы звук шел ТОЛЬКО через мост (решение проблемы эха).
+              speakerGainNodeRef.current.gain.setTargetAtTime(0.0, now, 0.05);
               setIsBroadcastActive(true);
           }
       }
