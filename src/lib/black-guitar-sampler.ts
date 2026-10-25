@@ -5,8 +5,8 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Black Acoustic V5.9 — "Velocity Restored".
- * #ЗАЧЕМ: Исправление бага, при котором velocity игнорировалось (было hardcoded 1.0).
+ * @fileOverview Сэмплер Black Acoustic V5.9.1 — "Pitch Humanisation".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3500. Внедрение микро-джиттера высоты тона (±2.5 цента).
  */
 
 function makeAcousticWarmthCurve() {
@@ -251,11 +251,15 @@ export class BlackGuitarSampler {
         source.buffer = buffer;
         const gainNode = this.audioContext.createGain();
         source.connect(gainNode).connect(this.preamp);
-        const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
-        source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
+        
+        // #ЗАЧЕМ: PITCH HUMANIZE. 
+        // Микро-детюн (±2.5 цента) для каждой ноты сэмплера.
+        const jitterCents = (Math.random() * 2 - 1) * 2.5;
+        const pitchRate = Math.pow(2, (targetMidi - sampleMidi + (jitterCents/100)) / 12);
+        
+        source.playbackRate.value = isFinite(pitchRate) ? pitchRate : 1.0;
         gainNode.gain.setValueAtTime(0, startTime);
         
-        // #ЗАЧЕМ: Фикс ПЛАНА №2605. Использование реального velocity из параметра.
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
         
         if (isTransientMode) {

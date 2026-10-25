@@ -1,8 +1,9 @@
 /**
- * @fileOverview Центральная фабрика инструментов V17.2 — "Phase Lock & Notch 400Hz".
- * #ЗАЧЕМ: Реализация ПЛАНА №3400. Внедрение алгоритмов очистки и синхронизации.
- * #ЧТО:  1. Добавлен Notch/Peaking 400Hz для гитар в buildMultiInstrument.
- *        2. Реализован алгоритм Phase Lock для баса (принудительный сброс фазы через Hard Start).
+ * @fileOverview Центральная фабрика инструментов V17.3 — "Pitch Humanisation".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3500. Внедрение микро-детонации для органического звучания.
+ * #ЧТО:  1. Добавлен Notch/Peaking 400Hz для гитар.
+ *        2. Реализован алгоритм Phase Lock для баса.
+ *        3. Внедрена случайная детонация (Humanize) для каждого нового голоса.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -204,9 +205,13 @@ const createIndependentVoice = (
     const isDub = eventParams?.isDub === true;
 
     // #ЗАЧЕМ: Алгоритм PHASE LOCK.
-    // Принудительная моментальная атака для баса, чтобы фаза осциллятора стартовала ровно с 0.
     const isPhaseLocked = (type === 'bass' && preset.phaseLock !== false);
     const attackTime = isPhaseLocked ? 0.002 : adsr.a;
+    
+    // #ЗАЧЕМ: Алгоритм PITCH HUMANIZE.
+    // Генерируем уникальный для этого голоса микро-детюн в начале атаки.
+    const humanizeCents = preset.humanize?.pitchCents || 0;
+    const randomDetune = (Math.random() * 2 - 1) * humanizeCents;
     
     const releaseTime = adsr.r;
     let peak = velocity * (isEcho ? 0.65 : 0.45); 
@@ -219,26 +224,25 @@ const createIndependentVoice = (
     const releaseTimeConstant = Math.max(releaseTime / 3, 0.08); 
     const expirationTime = now + duration + (releaseTimeConstant * 5) + 0.5;
 
-    const mainOscillators: OscillatorNode[] = [];
-
     if (type === 'guitar') {
         const osc = ctx.createOscillator();
         osc.setPeriodicWave(getGuitarWave(ctx, preset.osc?.width || 0.45));
         osc.frequency.setValueAtTime(f0, now);
+        // Применяем гуманизацию
+        osc.detune.setValueAtTime(randomDetune, now);
         osc.connect(voiceGain);
         osc.start(now);
         osc.stop(expirationTime);
         nodes.push(osc);
-        mainOscillators.push(osc);
     } else if (type === 'organ') {
         const osc = ctx.createOscillator();
         osc.setPeriodicWave(getOrganWave(ctx, preset.drawbars || [8,0,8,0,0,0,0,0,0]));
         osc.frequency.setValueAtTime(f0, now);
+        osc.detune.setValueAtTime(randomDetune, now);
         osc.connect(voiceGain);
         osc.start(now);
         osc.stop(expirationTime);
         nodes.push(osc);
-        mainOscillators.push(osc);
     } else {
         const oscConfigs = preset.osc || [{ type: 'sawtooth', gain: 0.5 }];
         let oscGainSum = 0;
@@ -247,14 +251,17 @@ const createIndependentVoice = (
             const osc = ctx.createOscillator();
             osc.type = o.type;
             osc.frequency.setValueAtTime(f0 * Math.pow(2, o.octave || 0), now);
-            if (isFinite(o.detune) && o.detune !== 0) osc.detune.setValueAtTime(o.detune, now);
+            
+            // Суммируем пресетный детюн и гуманизацию
+            const totalDetune = (o.detune || 0) + randomDetune;
+            osc.detune.setValueAtTime(totalDetune, now);
+            
             const g = ctx.createGain();
             g.gain.value = o.gain ?? 0.5;
             osc.connect(g).connect(voiceGain);
             osc.start(now);
             osc.stop(expirationTime);
             nodes.push(osc, g);
-            mainOscillators.push(osc);
         });
 
         let subApplied = 0;
@@ -264,13 +271,13 @@ const createIndependentVoice = (
                 const subOsc = ctx.createOscillator();
                 subOsc.type = preset.sub.type || 'sine';
                 subOsc.frequency.setValueAtTime(subHz, now);
+                subOsc.detune.setValueAtTime(randomDetune, now);
                 const sg = ctx.createGain();
                 sg.gain.value = preset.sub.gain ?? 0.5;
                 subOsc.connect(sg).connect(voiceGain);
                 subOsc.start(now);
                 subOsc.stop(expirationTime);
                 nodes.push(subOsc, sg);
-                mainOscillators.push(subOsc);
                 subApplied = preset.sub.gain ?? 0.5;
             }
         }
@@ -376,8 +383,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     hpf.type = 'highpass';
     hpf.frequency.value = type === 'bass' ? 32 : 150;
 
-    // #ЗАЧЕМ: Алгоритм NOTCH 400Hz.
-    // Очистка нижней середины для акустических инструментов.
     const mudCut = ctx.createBiquadFilter();
     const isAcoustic = (type === 'guitar' && (currentPreset.name?.includes('Black') || currentPreset.pluckBrightness > 0.8));
     
@@ -432,7 +437,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     if (comp) { head.connect(comp); head = comp; }
     if (makeup) { head.connect(makeup); head = makeup; }
     head.connect(hpf);
-    hpf.connect(mudCut);
+    head.connect(mudCut);
 
     let tail: AudioNode = mudCut;
     eqNodes.forEach(n => { tail.connect(n); tail = n; });

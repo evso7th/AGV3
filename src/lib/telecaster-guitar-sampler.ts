@@ -5,7 +5,8 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Telecaster V5.6 — "The 150Hz Barrier".
+ * @fileOverview Сэмплер Telecaster V5.6.1 — "Pitch Humanisation".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3500. Внедрение микро-джиттера высоты тона (±2.5 цента).
  */
 
 function makeWarmthCurve() {
@@ -58,7 +59,7 @@ export class TelecasterGuitarSampler {
     private isLoading = false;
 
     private preamp: GainNode;
-    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
+    private hpf: BiquadFilterNode; 
     private saturation: WaveShaperNode;
     private toneFilter: BiquadFilterNode;
     private outputTrim: GainNode;
@@ -188,7 +189,10 @@ export class TelecasterGuitarSampler {
         const gainNode = this.audioContext.createGain();
         source.connect(gainNode).connect(this.preamp);
         
-        const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
+        // #ЗАЧЕМ: PITCH HUMANIZE.
+        const jitterCents = (Math.random() * 2 - 1) * 2.5;
+        const playbackRate = Math.pow(2, (targetMidi - sampleMidi + (jitterCents/100)) / 12);
+        
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
         gainNode.gain.setValueAtTime(0, startTime);
@@ -212,7 +216,7 @@ export class TelecasterGuitarSampler {
                 source.disconnect();
                 gainNode.disconnect(); 
             } catch(e){}
-            source.onended = null; // Break closure cycle
+            source.onended = null; 
         };
     }
 

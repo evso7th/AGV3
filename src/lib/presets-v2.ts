@@ -1,5 +1,5 @@
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №3155): Синхронизация с V2.8 Synthesis Specification (Glass Acoustic, Liquid Lead).
+// #ОБНОВЛЕНО (ПЛАН №3500): Внедрена гуманизация высоты тона (Humanize Protocol).
 
 import { BASS_PRESETS } from './bass-presets';
 import { FOUNDRY_PRESETS } from './foundry-presets';
@@ -21,7 +21,8 @@ export const V2_PRESETS = {
     noise: { on: true, gain: 0.012 },
     adsr: { a: 0.8, d: 1.2, s: 0.6, r: 1.25 }, 
     lpf: { cutoff: 950, q: 0.8 }, 
-    reverbMix: 0
+    reverbMix: 0,
+    humanize: { pitchCents: 4 } // #ЗАЧЕМ: Легкая нестабильность аналогового синта
   },
 
   synth_ambient_pad_lush: {
@@ -35,7 +36,8 @@ export const V2_PRESETS = {
     ],
     adsr: { a: 2.0, d: 2.5, s: 0.6, r: 2.0 }, 
     lpf: { cutoff: 650, q: 0.7 }, 
-    reverbMix: 0
+    reverbMix: 0,
+    humanize: { pitchCents: 2 }
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -51,7 +53,7 @@ export const V2_PRESETS = {
     lpf: 1800,
     reverbMix: 0,
     leslie: { rate: 5.5, pitchDepth: 0.0002, ampDepth: 0.03, driftPct: 0.18, driftRate: 0.2 },
-    humanize: { detuneCents: 2.5, levelPct: 0.05, brightnessPct: 0.06 }
+    humanize: { detuneCents: 2.5, levelPct: 0.05, brightnessPct: 0.06, pitchCents: 3 }
   },
 
   organ_soft_jazz: {
@@ -63,7 +65,7 @@ export const V2_PRESETS = {
     adsr: { a: 0.03, d: 0.1, s: 0.8, r: 0.6 },
     reverbMix: 0,
     leslie: { rate: 5.0, pitchDepth: 0.0002, ampDepth: 0.025, driftPct: 0.18, driftRate: 0.17 },
-    humanize: { detuneCents: 2.5, levelPct: 0.05, brightnessPct: 0.06 }
+    humanize: { detuneCents: 2.5, levelPct: 0.05, brightnessPct: 0.06, pitchCents: 2 }
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -75,11 +77,12 @@ export const V2_PRESETS = {
     name: 'Black Acoustic',
     volume: 0.65,
     osc: { width: 0.42 },
-    adsr: { a: 0.005, d: 0.25, s: 0.6, r: 2.5 }, // #ЗАЧЕМ: "Вельветовый Релиз"
+    adsr: { a: 0.005, d: 0.25, s: 0.6, r: 2.5 }, 
     lpf: 5000, 
-    pluckBrightness: 0.9, // #ЗАЧЕМ: "Стеклянный щипок"
+    pluckBrightness: 0.9, 
     reverbMix: 0,
-    calibrationTrimDb: -2.99
+    calibrationTrimDb: -2.99,
+    humanize: { pitchCents: 5 } // #ЗАЧЕМ: Имитация неточности прижатия струн
   },
 
   guitar_shineOn: {
@@ -90,12 +93,13 @@ export const V2_PRESETS = {
     drive: { type: 'soft', amount: 0.25 },
     post: { lpf: 5000 }, 
     adsr: { a: 0.020, d: 0.35, s: 0.65, r: 1.8 }, 
-    delay: { time: 0.42, fb: 0.32, mix: 0.28 }, // #ЗАЧЕМ: Усиленный дилей
+    delay: { time: 0.42, fb: 0.32, mix: 0.28 }, 
     reverbMix: 0.08,
     attackTransient: 0.15,
     pluckBrightness: 0.95,
     vibrato: { rate: 5.2, depthCents: 12, delay: 0.40 },
-    calibrationTrimDb: 7.54
+    calibrationTrimDb: 7.54,
+    humanize: { pitchCents: 6 } // #ЗАЧЕМ: Более выразительное "воющее" соло
   },
 
   guitar_muffLead: {
@@ -103,15 +107,16 @@ export const V2_PRESETS = {
     name: 'Muff Lead (Garage Grit)',
     volume: 0.5, 
     osc: { width: 0.45 },
-    drive: { type: 'muff', amount: 0.85 }, // #ЗАЧЕМ: Усиленный Muff (злее)
+    drive: { type: 'muff', amount: 0.85 }, 
     post: { lpf: 4000 },
-    adsr: { a: 0.018, d: 0.5, s: 0.55, r: 2.8 }, // #ЗАЧЕМ: Long Howl support
+    adsr: { a: 0.018, d: 0.5, s: 0.55, r: 2.8 }, 
     delay: { time: 0.30, fb: 0.18, mix: 0.12 },
     reverbMix: 0.12,
     attackTransient: 0.10,
     pluckBrightness: 0.7,
     vibrato: { rate: 5.5, depthCents: 22, delay: 0.30 },
-    calibrationTrimDb: 4.5
+    calibrationTrimDb: 4.5,
+    humanize: { pitchCents: 8 } // #ЗАЧЕМ: Гаражный драйв требует "грязи" в интонации
   },
 
   ep_rhodes: {
@@ -124,7 +129,8 @@ export const V2_PRESETS = {
     ],
     adsr: { a: 0.01, d: 0.3, s: 0.6, r: 1.2 }, 
     lpf: { cutoff: 2400, q: 0.7 }, 
-    reverbMix: 0.05
+    reverbMix: 0.05,
+    humanize: { pitchCents: 3 }
   }
 } as const;
 

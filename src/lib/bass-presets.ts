@@ -1,6 +1,6 @@
 /**
- * @fileOverview Bass Presets V5.2 — "Breathing Bass Standard".
- * #ЗАЧЕМ: Реализация ПЛАНА №3355. Внедрение Triangle Sub и динамических ADSR.
+ * @fileOverview Bass Presets V5.3 — "Pitch Humanisation".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3500. Внедрение микро-детонации для баса.
  */
 
 export interface BassPreset {
@@ -23,6 +23,7 @@ export interface BassPreset {
     chorus?: { on: boolean; rate: number; depth: number; mix: number };
     delay?: { on: boolean; time: number; fb: number; mix: number; hc?: number };
     reverbMix?: number;
+    humanize?: { pitchCents: number }; // #ЗАЧЕМ: Новый параметр гуманизации
   }
   
   const NO_DRIVE: BassPreset['drive'] = { on: false, type: 'tube', amount: 0, tone: 1500 };
@@ -66,11 +67,12 @@ export interface BassPreset {
     bass_jazz_warm: {
       type: 'bass', name: 'Jazz Upright', volume: 0.55,
       osc: [{ type: 'sine', octave: 0, detune: 0, gain: 0.8 }],
-      sub: { on: true, type: 'triangle', octave: -1, gain: 0.3 }, // #ЗАЧЕМ: Triangle для "зернистости"
-      adsr: { a: 0.10, d: 2.0, s: 0.70, r: 1.2 }, // #ЗАЧЕМ: "Вдох" 100мс
+      sub: { on: true, type: 'triangle', octave: -1, gain: 0.3 }, 
+      adsr: { a: 0.10, d: 2.0, s: 0.70, r: 1.2 }, 
       filter: { type: 'lowpass', cutoff: 420, q: 0.5, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.05,
+      humanize: { pitchCents: 3 } // #ЗАЧЕМ: Микро-неточность интонации контрабаса
     },
     bass_slap: {
       type: 'bass', name: 'Soft Jazz (legacy)', volume: 0.52,
@@ -80,6 +82,7 @@ export interface BassPreset {
       filter: { type: 'lowpass', cutoff: 420, q: 0.5, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.05,
+      humanize: { pitchCents: 3 }
     },
     glideBass: {
       type: 'bass', name: 'Ambient Sub', volume: 0.5,
@@ -89,6 +92,7 @@ export interface BassPreset {
       filter: { type: 'lowpass', cutoff: 320, q: 0.5, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.18,
+      humanize: { pitchCents: 2 }
     },
     bass_cs80: {
       type: 'bass', name: 'CS80 Hybrid Bass', volume: 0.5,
@@ -97,6 +101,7 @@ export interface BassPreset {
       filter: { type: 'lowpass', cutoff: 450, q: 0.6, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.08,
+      humanize: { pitchCents: 4 }
     },
     bass_jazz_fretless: {
       type: 'bass', name: 'Fretless Jaco', volume: 0.52,
@@ -106,6 +111,7 @@ export interface BassPreset {
       filter: { type: 'lowpass', cutoff: 450, q: 0.5, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.1,
+      humanize: { pitchCents: 5 }
     },
     bass_blues: {
       type: 'bass', name: 'Blues Bass', volume: 0.52,
@@ -115,6 +121,7 @@ export interface BassPreset {
       filter: { type: 'lowpass', cutoff: 430, q: 0.5, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.07,
+      humanize: { pitchCents: 4 }
     },
     bass_ambient_dark: {
       type: 'bass', name: 'Dark Ambient', volume: 0.48,
@@ -125,6 +132,7 @@ export interface BassPreset {
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP,
       eq: { lowShelf: { freq: 60, gain: 1 }, mid: { freq: 300, q: 0.8, gain: -3 }, highShelf: { freq: 1200, gain: -12 } },
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.25,
+      humanize: { pitchCents: 2 }
     },
     bass_trance_acid: {
       type: 'bass', name: 'Rolling Sub', volume: 0.52,
@@ -134,6 +142,7 @@ export interface BassPreset {
       filter: { type: 'lowpass', cutoff: 400, q: 0.5, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.05,
+      humanize: { pitchCents: 3 }
     },
     bass_reggae: {
       type: 'bass', name: 'Reggae Bass', volume: 0.55,
@@ -145,6 +154,7 @@ export interface BassPreset {
       stringNoise: NO_NOISE, chorus: NO_CHORUS,
       delay: { on: true, time: 0.375, fb: 0.25, mix: 0.06, hc: 1200 },
       reverbMix: 0.06,
+      humanize: { pitchCents: 3 }
     },
     bass_dub: {
       type: 'bass', name: 'Dub Bass', volume: 0.52,
@@ -156,6 +166,7 @@ export interface BassPreset {
       stringNoise: NO_NOISE, chorus: NO_CHORUS,
       delay: { on: true, time: 0.5, fb: 0.3, mix: 0.08, hc: 1100 },
       reverbMix: 0.18,
+      humanize: { pitchCents: 4 }
     },
     bass_house: {
       type: 'bass', name: 'House Bass', volume: 0.55,
@@ -165,6 +176,7 @@ export interface BassPreset {
       filter: { type: 'lowpass', cutoff: 380, q: 0.5, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.04,
+      humanize: { pitchCents: 3 }
     },
     bass_808: {
       type: 'bass', name: '808 Sub', volume: 0.55,
@@ -175,6 +187,7 @@ export interface BassPreset {
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP,
       eq: { lowShelf: { freq: 55, gain: 1 }, mid: { freq: 300, q: 0.9, gain: -3 }, highShelf: { freq: 1200, gain: -12 } },
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.03,
+      humanize: { pitchCents: 2 }
     },
     bass_deep_house: {
       type: 'bass', name: 'Deep House', volume: 0.52,
@@ -184,6 +197,7 @@ export interface BassPreset {
       filter: { type: 'lowpass', cutoff: 400, q: 0.5, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.05,
+      humanize: { pitchCents: 3 }
     },
     bass_rock_pick: {
       type: 'bass', name: 'Soft Rock Bass', volume: 0.52,
@@ -193,5 +207,6 @@ export interface BassPreset {
       filter: { type: 'lowpass', cutoff: 450, q: 0.5, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.05,
+      humanize: { pitchCents: 5 }
     },
   };

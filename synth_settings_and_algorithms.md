@@ -4,24 +4,21 @@
 
 | Жанр / Тип баса | Форма волны (Waveform) | ADSR (Амплитуда / Фильтр) | Фильтр (Filter Low-Pass) | Дисторшн / Насыщение (Distortion) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Джаз (Jazz)** | Triangle + Sine (или приглушенная Saw) | **A:** 2-5ms <br>**D:** 150-300ms <br>**S:** 50-70% <br>**R:** 50-100ms | 24dB LP. Cutoff низкий (200-400Hz). Resonance минимальный. | **Tape/Tube Saturation**: минимальный (1-5%) для легкой аналоговой теплоты. |
-| **Блюз (Blues)** | Triangle + Sub-Sine (или Square с узким пульсом) | **A:** 5-10ms <br>**D:** 200-400ms <br>**S:** 60-80% <br>**R:** 80-150ms | 12dB или 24dB LP. Cutoff ~300Hz. Мягкий спад. | **Tube Overdrive**: легкий (5-10%), чтобы добавить гармоник в нижней середине. |
-| **Fretless (Безладовый)** | Saw + Triangle (сглаженные) | **A:** 20-50ms (дает «въезд») <br>**D:** 300-500ms <br>**S:** 70-80% <br>**R:** 150-250ms (певучий хвост) | 12dB LP. Модуляция фильтра через LFO/Env для эффекта «уау» (mwah). Cutoff ~500Hz. | **Tape Saturation**: средний (5-12%), акцент на певучую середину. |
-| **808 Bass** | Чистый Sine + Triangle (опционально) | **A:** 0-2ms (щелчок) или 10-20ms (плавный) <br>**D:** 1.5-3.0s (длинный) <br>**S:** 0% (как ударный) <br>**R:** 50-100ms | 24dB LP. Cutoff очень низкий (80-120Hz). Фильтр почти закрыт. | **Clip / Wavefolder / Overdrive**: от 15% до 60%. Искажение делает 808 слышимым на телефонах. |
-| **Ambient Drone** | Sub-Sine + Rich Saw / Square | **A:** 1.5-4.0s (очень медленный) <br>**D:** 0ms <br>**S:** 100% <br>**R:** 2.0-5.0s (бесконечный хвост) | 24dB LP. Медленная модуляция Cutoff (LFO). Resonance средний (20-40%) для гула. | **Bitcrusher / Rate Reducer** или **Lo-Fi Saturation**: 5-15% для текстуры и шума. |
-| **Pop Bass** | Square + Saw (четкий, пробивной) | **A:** 0-2ms <br>**D:** 100-250ms <br>**S:** 30-50% <br>**R:** 20-50ms | 24dB LP. Короткая огибающая на Cutoff (Env -> Cutoff ~40-60%). Звук должен «стрелять». | **Soft Clipper**: 5-15% для плотности и контроля пиков в миксе. |
-| **Rock Bass** | Две Saw волны (расстроенные/Detuned) | **A:** 1-3ms <br>**D:** 200-400ms <br>**S:** 80-90% <br>**R:** 50-100ms | 12dB LP (более открытый верх). Cutoff высокий (800-1500Hz), чтобы пробивать гитары. | **Hard Distortion / Guitar Amp Sim**: 20-40%. Сильный перегруз, эмуляция бас-комбика. |
+| **Джаз (Jazz / Warm)** | Sine + **Triangle Sub** (Gain 0.3) | **A:** 100ms (вдох) <br>**D:** 2s <br>**S:** 70% <br>**R:** 1.2s | 24dB LP. **Dynamic Cutoff**: открытие до 600Hz, закрытие до 120Hz. | **Tape Saturation**: 5%. Добавлен **Drift** (детюн 2-4 цента, LFO 0.1Hz). |
+| **Блюз (Blues)** | Triangle + Sub-Sine | **A:** 5-10ms <br>**D:** 200-400ms <br>**S:** 60-80% <br>**R:** 150ms | 12dB или 24dB LP. Cutoff ~300Hz. Мягкий спад. | **Tube Overdrive**: 10%. Насыщение нижней середины. |
+| **Fretless (Безладовый)** | Saw + Triangle (сглаженные) | **A:** 20-50ms <br>**D:** 300-500ms <br>**S:** 70-80% <br>**R:** 250ms | 12dB LP. Модуляция «mwah» через LFO. Cutoff ~500Hz. | **Tape Saturation**: 12%. Акцент на певучую середину. |
+| **808 Bass** | Чистый Sine + Triangle | **A:** 0-2ms (click) <br>**D:** 2.5s <br>**S:** 0% <br>**R:** 100ms | 24dB LP. Cutoff 100Hz. Почти закрыт. | **Wavefolder**: 40%. Обеспечивает слышимость на мобильных выпусках. |
+| **Ambient Drone** | Sub-Sine + Rich Saw | **A:** 3.0s <br>**D:** 0ms <br>**S:** 100% <br>**R:** 4.0s | 24dB LP. Медленная модуляция Cutoff (LFO 0.05Hz). | **Lo-Fi Saturation**: 10%. Текстурный шум. |
 
 ---
 
-## 2. Лид-электрогитары: Сводная таблица параметров
+## 2. Гитары: Акустические и Лид-электрогитары
 
-| Жанр / Стиль гитары | Форма волны (Waveform) | ADSR (Амплитуда / Фильтр) | Фильтр (Filter Configuration) | Дисторшн & Усиление (Distortion / Amp) | Эффекты & Модуляция (FX / Mod) |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Джаз-гитара (Jazz Clean)** | Sine + Triangle (или мягкий Pulse) | **A:** 5-10ms <br>**D:** 400-600ms <br>**S:** 40-50% <br>**R:** 100-150ms | 24dB LP. Cutoff низкий (~500-800Hz). Без резонанса. | **Tape/Tube Saturation**: минимальный (2-5%). | **Spring Reverb**: Mix 20%. Легкий **Chorus** (Mix 10%, Rate медленный) для объема. |
-| **Блюз-лид (Blues Overdrive)** | Saw + Triangle (или узкий Square) | **A:** 2-5ms <br>**D:** 300-500ms <br>**S:** 70-80% <br>**R:** 150-200ms | 12dB LP. Cutoff ~2-3kHz. Фильтр слегка привязан к Velocity. | **Tube Overdrive / Crunch**: средний (15-25%). | **Mod Wheel -> Pitch LFO**: глубина 20-30%, частота 5-6Hz (эмуляция вибрато пальцем). |
-| **Поп-гитара (Pop Clean/Muted)** | 2 расстроенные Saw или Square + Saw | **A:** 0-2ms <br>**D:** 150-250ms <br>**S:** 20-40% <br>**R:** 50-80ms | 24dB LP. Короткий Decay на фильтре. Cutoff открывается до 4-5kHz при сильном нажатии. | **Soft Clipper / Treble Booster**: 5-10%. Яркий и пробивной звук. | **Ping-Pong Delay** (1/8 или 1/4). **Stereo Dimension/Hyper** для ширины. |
-| **Рок / Метал (High-Gain)** | 2-3 Saw волны (Detuned + Sub-Osc) | **A:** 1-3ms <br>**D:** инфинити <br>**S:** 90-100% | 12dB LP или Band-Pass. Cutoff открыт полностью (8-12kHz). Резонанс 10-15%. | **Hard Distortion / Guitar Amp Sim**: высокий (40-70%). Эмуляция стека Marshall/Mesa. | **Legato/Portamento**: время скольжения 40-70ms. **Stereo Delay** + **Large Room Reverb**. |
+| Тип гитары | Спектральная коррекция | ADSR / Phrasing | Артикуляция и Транзиенты | Эффекты |
+| :--- | :--- | :--- | :--- | :--- |
+| **Acoustic (Black)** | **Notch -6dB @ 400Hz** (Q:2.0) | **Release: 2.5s** (Exp). Создает гармоническое облако. | **pluckBrightness: 0.9** (при vel > 0.7). Стеклянный звон. | **Body Resonance**: Peaking 220Hz (+3dB). |
+| **Lead (Shine On)** | High Shelf +1dB > 10kHz | **A:** 20ms <br>**R:** 1.8s | **PWM Modulation**: Имитация хоруса внутри осциллятора. | **Darkening Delay**: LPF на фидбэке снижается с каждым эхо. |
+| **Lead (Muff)** | Mid Boost +3.5dB @ 1kHz | **A:** 18ms <br>**R:** 2.8s | **The Long Howl**: 2.5x сустейн на золотых нотах. | **Fuzz/Muff**: Amount 0.85. Агрессивный гаражный тон. |
 
 ---
 
@@ -32,53 +29,27 @@
 
 ### Примеры пресетов по жанрам
 1. **Джаз-лид:**
-   * **Chorus:** Mix 10%, Rate 0.5–0.8 Hz, Depth 15–20%.
-   * **Delay:** Выключен.
-   * **Reverb (Spring/Room):** Mix 20–25%, Decay 1.0–1.4s, Hi-Cut 3.5 kHz (тёплый хвост).
+   * **Chorus:** Mix 10%, Rate 0.5–0.8 Hz.
+   * **Reverb (Spring):** Mix 20%, Hi-Cut 3.5 kHz.
 2. **Блюз-лид:**
-   * **Chorus:** Mix 15%, Rate 1.0–1.2 Hz, Depth 30%.
-   * **Delay (Tape):** Time 1/8 или Slapback (80–120 ms), Feedback 15–20% (1-2 повтора), Mix 20%.
-   * **Reverb (Plate/Hall):** Mix 15–20%, Decay 1.5–1.8s.
-3. **Поп-лид:**
-   * **Chorus (Hyper/Dimension):** Mix 30–40%, Rate 1.5 Hz, Depth 40% (максимальная ширина).
-   * **Delay (Ping-Pong):** Time 1/8d или 1/4, Feedback 35–45%, Mix 25–35%.
-   * **Reverb (Hall):** Mix 25%, Decay 2.0–2.5s, Low-Cut 200 Hz (срез грязи).
-4. **Рок / Метал лид:**
-   * **Chorus:** Mix 20%, Rate 0.9 Hz, Depth 25%.
-   * **Delay (Dual/Stereo):** Left 1/4, Right 1/8, Feedback 40–50%, Mix 30%.
-   * **Reverb (Large Hall):** Mix 30%, Decay 3.0–4.0s, Pre-Delay 30–40 ms (для сохранения атаки).
+   * **Delay (Tape):** Slapback (100 ms), Feedback 20%.
+   * **Reverb (Plate):** Mix 20%, Decay 1.8s.
+3. **Liquid Trance Lead:**
+   * **PWM LFO:** 0.3 Hz, Depth 20%.
+   * **Ping-Pong Delay:** 1/8d, **Feedback LPF: 2000Hz (darkening)**.
 
 ---
 
-## 4. Алгоритм динамического Glide для самописного синта
+## 4. Специфические алгоритмы
 
-### Математическая модель
-$$T_{glide} = T_{base} \cdot f(\Delta Pitch) \cdot g(Velocity)$$
+### Pitch Humanisation Protocol (V2.9)
+Имитация несовершенства человеческого исполнения через микро-детонацию.
+*   **Per-Note Jitter**: Каждая новая нота получает случайное смещение высоты в диапазоне ±2-8 центов.
+*   **Sampler Pitch Jitter**: Сэмплеры (Black, Tele) применяют случайный множитель к `playbackRate` (±2.5 цента).
+*   **Analog Drift**: Медленное (0.1 Гц) плавание общей частоты осцилляторов на 1-2 цента.
 
-* Множитель расстояния: $f(\Delta Pitch) = 1 + k_1 \cdot \ln(1 + |\Delta Pitch|)$
-* Множитель силы удара: $g(Velocity) = 1 - k_2 \cdot \left(\frac{Velocity}{127}\right)$
+### One-Drop Sync (Reggae)
+*   **Phase Lock**: Фаза басового осциллятора принудительно сбрасывается в 0 при каждом ударе бочки на 3-й доле. Это устраняет фазовые вычитания.
 
-### Псевдокод (C++)
-```cpp
-const float K1_DIST_INFLUENCE = 0.5f;  
-const float K2_VEL_INFLUENCE  = 0.6f;  
-const float MIN_GLIDE_TIME    = 5.0f;  
-
-float calculate_dynamic_glide(int target_pitch, int current_pitch, int velocity, float base_glide_time) 
-{
-    int delta_pitch = abs(target_pitch - current_pitch);
-    if (delta_pitch == 0) return 0.0f;
-
-    float distance_multiplier = 1.0f + K1_DIST_INFLUENCE * log1pf((float)delta_pitch);
-    float normalized_vel = (float)velocity / 127.0f;
-    float velocity_multiplier = 1.0f - (K2_VEL_INFLUENCE * normalized_vel);
-
-    float final_glide_time = base_glide_time * distance_multiplier * velocity_multiplier;
-
-    if (final_glide_time < MIN_GLIDE_TIME) {
-        final_glide_time = MIN_GLIDE_TIME;
-    }
-
-    return final_glide_time;
-}
-```
+### Mincer Arp (Foundry)
+*   **Density Guard**: При плотности > 4 нот/такт отфильтровываются все ноты вне «Золотой Сетки» (0, 3, 6, 9 тики).
