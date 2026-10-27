@@ -68,11 +68,11 @@ export interface BassPreset {
       type: 'bass', name: 'Jazz Upright', volume: 0.55,
       osc: [{ type: 'sine', octave: 0, detune: 0, gain: 0.8 }],
       sub: { on: true, type: 'triangle', octave: -1, gain: 0.3 }, 
-      adsr: { a: 0.10, d: 2.0, s: 0.70, r: 1.2 }, 
+      adsr: { a: 0.10, d: 2.0, s: 0.55, r: 1.2 }, 
       filter: { type: 'lowpass', cutoff: 420, q: 0.5, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.05,
-      humanize: { pitchCents: 3 } // #ЗАЧЕМ: Микро-неточность интонации контрабаса
+      humanize: { pitchCents: 3 }
     },
     bass_slap: {
       type: 'bass', name: 'Soft Jazz (legacy)', volume: 0.52,
@@ -117,7 +117,7 @@ export interface BassPreset {
       type: 'bass', name: 'Blues Bass', volume: 0.52,
       osc: [{ type: 'sine', octave: 0, detune: 0, gain: 0.8 }, { type: 'triangle', octave: 0, detune: 2, gain: 0.15 }],
       sub: { on: true, type: 'sine', octave: -1, gain: 0.35 },
-      adsr: { a: 0.18, d: 1.8, s: 0.65, r: 1.0 },
+      adsr: { a: 0.18, d: 1.8, s: 0.50, r: 1.0 },
       filter: { type: 'lowpass', cutoff: 430, q: 0.5, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.07,

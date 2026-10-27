@@ -209,7 +209,6 @@ const createIndependentVoice = (
     const attackTime = isPhaseLocked ? 0.002 : adsr.a;
     
     // #ЗАЧЕМ: Алгоритм PITCH HUMANIZE.
-    // Генерируем уникальный для этого голоса микро-детюн в начале атаки.
     const humanizeCents = preset.humanize?.pitchCents || 0;
     const randomDetune = (Math.random() * 2 - 1) * humanizeCents;
     
@@ -228,7 +227,6 @@ const createIndependentVoice = (
         const osc = ctx.createOscillator();
         osc.setPeriodicWave(getGuitarWave(ctx, preset.osc?.width || 0.45));
         osc.frequency.setValueAtTime(f0, now);
-        // Применяем гуманизацию
         osc.detune.setValueAtTime(randomDetune, now);
         osc.connect(voiceGain);
         osc.start(now);
@@ -251,11 +249,8 @@ const createIndependentVoice = (
             const osc = ctx.createOscillator();
             osc.type = o.type;
             osc.frequency.setValueAtTime(f0 * Math.pow(2, o.octave || 0), now);
-            
-            // Суммируем пресетный детюн и гуманизацию
             const totalDetune = (o.detune || 0) + randomDetune;
             osc.detune.setValueAtTime(totalDetune, now);
-            
             const g = ctx.createGain();
             g.gain.value = o.gain ?? 0.5;
             osc.connect(g).connect(voiceGain);
@@ -318,6 +313,9 @@ const createIndependentVoice = (
 
     if (isBass) {
         filter.Q.value = preset.lpf?.q ?? preset.filter?.q ?? 0.7; 
+        // #ЗАЧЕМ: BASS PURITY. Динамическое закрытие фильтра на длинных нотах.
+        filter.frequency.setValueAtTime(filter.frequency.value, now);
+        filter.frequency.setTargetAtTime(filter.frequency.value * 0.6, now + 0.3, 1.0);
     } else {
         filter.Q.value = type === 'guitar' ? 0.7 : (preset.lpf?.q || 0.7);
     }
@@ -381,7 +379,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const panner = ctx.createStereoPanner();
     const hpf = ctx.createBiquadFilter();
     hpf.type = 'highpass';
-    hpf.frequency.value = type === 'bass' ? 32 : 150;
+    // #ЗАЧЕМ: BASS PURITY. Физическая отсечка инфразвука на 42Гц.
+    hpf.frequency.value = type === 'bass' ? 42 : 150;
 
     const mudCut = ctx.createBiquadFilter();
     const isAcoustic = (type === 'guitar' && (currentPreset.name?.includes('Black') || currentPreset.pluckBrightness > 0.8));

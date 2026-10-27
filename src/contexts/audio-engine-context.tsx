@@ -296,7 +296,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
               masterGainNodeRef.current.gain.setTargetAtTime(calibrationGainsRef.current.master, context.currentTime, 0.05); 
           }
           
-          // #ЗАЧЕМ: ПЛАН №3025. Мьютируем прямые динамики (0.0), чтобы избежать эхо при автозапуске моста.
           if (broadcastEngineRef.current && !broadcastEngineRef.current.isActive()) {
               triggerStreamPulse();
               speakerGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.05); 
@@ -487,9 +486,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         samplersMasterGainRef.current.connect(masterGainNodeRef.current); 
         masterGainNodeRef.current.connect(masterHPF);
 
-        // #ЗАЧЕМ: мягкий клиппинг = бас выносит мастер за 0 dBFS. Ставим лимитер до анализатора.
+        // #ЗАЧЕМ: BASS PURITY. Лимитер на мастере установлен на -6dB.
         const masterLimiter = context.createDynamicsCompressor();
-        masterLimiter.threshold.value = -3;
+        masterLimiter.threshold.value = -6;
         masterLimiter.knee.value = 0;
         masterLimiter.ratio.value = 20;
         masterLimiter.attack.value = 0.003;
@@ -603,7 +602,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           } else {
               triggerStreamPulse();
               broadcastEngineRef.current.start();
-              // #ЗАЧЕМ: Мьютируем прямые динамики, чтобы звук шел ТОЛЬКО через мост (решение проблемы эха).
               speakerGainNodeRef.current.gain.setTargetAtTime(0.0, now, 0.05);
               setIsBroadcastActive(true);
           }

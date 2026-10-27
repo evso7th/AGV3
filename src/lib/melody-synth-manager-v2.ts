@@ -140,6 +140,11 @@ export class MelodySynthManagerV2 {
             };
         });
         
+        // #ЗАЧЕМ: BASS PURITY. Очистка хвостов предыдущего такта для баса.
+        if (this.partName === 'bass' && notesToPlay.length > 0) {
+            this.allNotesOff();
+        }
+
         let finalHint = instrumentHint;
         if (!finalHint || finalHint === 'melody') {
             finalHint = this.partName === 'bass' ? 'bass_jazz_warm' : 'telecaster';
@@ -182,9 +187,8 @@ export class MelodySynthManagerV2 {
             return;
         }
         
-        //if (currentActive === 'guitar_muffLead' || currentActive === 'guitar_shineOn') {
-            if (this.partName === 'melody' && (currentActive === 'guitar_muffLead' || currentActive === 'guitar_shineOn')) { 
-        this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, true);
+        if (this.partName === 'melody' && (currentActive === 'guitar_muffLead' || currentActive === 'guitar_shineOn')) { 
+            this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
         
         notesToPlay.forEach(note => {
