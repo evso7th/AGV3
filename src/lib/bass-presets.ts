@@ -70,7 +70,7 @@ export interface BassPreset {
       osc: [{ type: 'sine', octave: 0, detune: 0, gain: 0.8 }],
       sub: { on: true, type: 'triangle', octave: -1, gain: 0.3 }, 
       // #ЗАЧЕМ: Bass Purity Protocol - Lower Sustain
-      adsr: { a: 0.10, d: 2.0, s: 0.55, r: 1.2 }, 
+      adsr: { a: 0.10, d: 1.5, s: 1.15, r: 1.2 }, 
       filter: { type: 'lowpass', cutoff: 420, q: 0.5, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.05,
@@ -80,7 +80,7 @@ export interface BassPreset {
       type: 'bass', name: 'Soft Jazz (legacy)', volume: 0.52,
       osc: [{ type: 'sine', octave: 0, detune: 0, gain: 0.8 }],
       sub: { on: true, type: 'sine', octave: -1, gain: 0.4 },
-      adsr: { a: 0.18, d: 2.0, s: 0.65, r: 1.6 },
+      adsr: { a: 0.18, d: 2.0, s: 0.65, r: 1.2 },
       filter: { type: 'lowpass', cutoff: 420, q: 0.5, keyTrack: 0.1 },
       filterEnv: NO_FILTER_ENV, drive: NO_DRIVE, comp: SOFT_COMP, eq: ROUND_EQ,
       stringNoise: NO_NOISE, chorus: NO_CHORUS, delay: NO_DELAY, reverbMix: 0.05,

@@ -25,7 +25,7 @@ const STEAL_PRIORITY: Record<string, number> = {
 };
 
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.75,
+  bass: 0.375, // #ЗАЧЕМ: Снижение громкости в 2 раза по запросу пользователя.
   melody: 1.50,
   accompaniment: 1.50,
   drums: 0.50,

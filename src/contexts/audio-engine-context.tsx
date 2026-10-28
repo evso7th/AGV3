@@ -30,7 +30,7 @@ import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.95,
+  bass: 0.475, // #ЗАЧЕМ: Снижение громкости в 2 раза по запросу пользователя.
   melody: 0.1125, 
   accompaniment: 0.30, 
   drums: 0.65,
