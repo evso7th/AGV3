@@ -314,7 +314,14 @@ const createIndependentVoice = (
         finalCutoff = baseCutoff * Math.pow(0.92, midi - 60);
     }
 
-    filter.frequency.value = finalCutoff * (isBass ? 1 : tempo / 72);
+    // #ЗАЧЕМ: Bass Purity Protocol - Dynamic LPF Closure
+    if (isBass) {
+        filter.frequency.setValueAtTime(finalCutoff, now);
+        // Плавно снижаем частоту среза до 60% от исходной за 1.5 секунды, чтобы убрать гул
+        filter.frequency.setTargetAtTime(finalCutoff * 0.6, now + 0.3, 1.2);
+    } else {
+        filter.frequency.value = finalCutoff * (tempo / 72);
+    }
 
     if (isBass) {
         filter.Q.value = preset.lpf?.q ?? preset.filter?.q ?? 0.7; 
@@ -381,7 +388,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const panner = ctx.createStereoPanner();
     const hpf = ctx.createBiquadFilter();
     hpf.type = 'highpass';
-    hpf.frequency.value = type === 'bass' ? 32 : 150;
+    // #ЗАЧЕМ: Bass Purity Protocol - Steeper HPF
+    hpf.frequency.value = type === 'bass' ? 42 : 150;
 
     const mudCut = ctx.createBiquadFilter();
     const isAcoustic = (type === 'guitar' && (currentPreset.name?.includes('Black') || currentPreset.pluckBrightness > 0.8));

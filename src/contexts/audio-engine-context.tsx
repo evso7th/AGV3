@@ -487,9 +487,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         samplersMasterGainRef.current.connect(masterGainNodeRef.current); 
         masterGainNodeRef.current.connect(masterHPF);
 
-        // #ЗАЧЕМ: мягкий клиппинг = бас выносит мастер за 0 dBFS. Ставим лимитер до анализатора.
+        // #ЗАЧЕМ: Bass Purity Protocol - Master Headroom -6dB
         const masterLimiter = context.createDynamicsCompressor();
-        masterLimiter.threshold.value = -3;
+        masterLimiter.threshold.value = -6;
         masterLimiter.knee.value = 0;
         masterLimiter.ratio.value = 20;
         masterLimiter.attack.value = 0.003;
