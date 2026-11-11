@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V86.0 — "Master Limiter Implementation".
- * #ЗАЧЕМ: Защита от цифрового клиппинга. Лимитер на мастере предотвращает хрипы при суммировании низких частот.
+ * @fileOverview Audio Engine Context V87.0 — "Neuro Smoothness Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3035. Адаптивный Lookahead для высоконагруженных тактов.
  */
 'use client';
 
@@ -30,7 +30,7 @@ import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.475, // #ЗАЧЕМ: Снижение громкости в 2 раза по запросу пользователя.
+  bass: 0.475, 
   melody: 0.1125, 
   accompaniment: 0.30, 
   drums: 0.65,
@@ -296,7 +296,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
               masterGainNodeRef.current.gain.setTargetAtTime(calibrationGainsRef.current.master, context.currentTime, 0.05); 
           }
           
-          // #ЗАЧЕМ: ПЛАН №3025. Мьютируем прямые динамики (0.0), чтобы избежать эхо при автозапуске моста.
           if (broadcastEngineRef.current && !broadcastEngineRef.current.isActive()) {
               triggerStreamPulse();
               speakerGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.05); 
@@ -487,7 +486,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         samplersMasterGainRef.current.connect(masterGainNodeRef.current); 
         masterGainNodeRef.current.connect(masterHPF);
 
-        // #ЗАЧЕМ: Bass Purity Protocol - Master Headroom -6dB
         const masterLimiter = context.createDynamicsCompressor();
         masterLimiter.threshold.value = -6;
         masterLimiter.knee.value = 0;
@@ -563,14 +561,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (isFinite(payload.tension)) setTension(payload.tension); 
                 let scheduleTime = nextBarTimeRef.current;
                 const now = ctx.currentTime;
-                if (payload.barCount === 0 || scheduleTime < now + 0.05) scheduleTime = now + 0.35;
                 const tempo = payload.actualBpm || 75;
 
-                let effectiveLimit = voiceLimitRef.current;
-                if (tempo > 140) effectiveLimit = 32;
-                else if (tempo > 120) effectiveLimit = 64;
-                else if (tempo > 100) effectiveLimit = 128;
-                setGlobalVoiceLimit(effectiveLimit);
+                // #ЗАЧЕМ: ПЛАН №3035. Адаптивный Lookahead.
+                // Для Транса и плотных тактов увеличиваем буфер до 0.55с, чтобы избежать заиканий.
+                const isHighLoad = tempo > 120 || payload.events.length > 25;
+                const lookahead = isHighLoad ? 0.55 : 0.35;
+
+                if (payload.barCount === 0 || scheduleTime < now + 0.05) scheduleTime = now + lookahead;
 
                 scheduleEvents(payload.events, scheduleTime, tempo, payload.barCount, payload.totalBars, payload.instrumentHints);
                 nextBarTimeRef.current = scheduleTime + payload.barDuration;
@@ -603,7 +601,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           } else {
               triggerStreamPulse();
               broadcastEngineRef.current.start();
-              // #ЗАЧЕМ: Мьютируем прямые динамики, чтобы звук шел ТОЛЬКО через мост (решение проблемы эха).
               speakerGainNodeRef.current.gain.setTargetAtTime(0.0, now, 0.05);
               setIsBroadcastActive(true);
           }

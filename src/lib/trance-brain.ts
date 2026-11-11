@@ -1,6 +1,6 @@
 /**
-@fileOverview Trance Brain V31.2 — "Neuro Smoothness Protocol".
-#ЗАЧЕМ: ПЛАН №3030. Продление длительностей аккомпанемента для предотвращения "обрывов".
+@fileOverview Trance Brain V32.0 — "Neuro Smoothness Protocol".
+#ЗАЧЕМ: ПЛАН №3035. Устранение "тянущего" звука через вероятностное прореживание вместо жесткой сетки.
 */
 import {
   FractalEvent,
@@ -414,7 +414,6 @@ export class TranceBrain {
     // 1. DRUMS (Locked 4/4 Foundation)
     if (hints.drums) {
         events.push(...this.renderFoundryTranceDrums(epoch, tension));
-        // #ЗАЧЕМ: ПЛАН №2930. Heritage DNA как подложка (фильтруем Kick/Snare).
         if (this.currentDrumAxioms.length > 0) {
             const axiomEvents = this.currentDrumAxioms.flatMap(ax => {
                 const localBar = Math.abs(mosaicBar) % this.phraseBarCount(ax.phrase);
@@ -495,7 +494,6 @@ export class TranceBrain {
 
   private renderFoundryTranceDrums(epoch: number, tension: number): FractalEvent[] {
     const events: FractalEvent[] = [];
-    // #ЗАЧЕМ: ПЛАН №2930. Незыблемый фундамент 4/4.
     [0, 3, 6, 9].forEach(t => events.push({ 
         type: 'drum_foundry_quality', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, 
         weight: 0.65, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
@@ -506,7 +504,6 @@ export class TranceBrain {
       weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
     }));
 
-    // #ЗАЧЕМ: Деликатное разнообразие по Tension.
     const varietyProb = 0.2 + (tension * 0.7);
     [1.5, 4.5, 7.5, 10.5].forEach(t => {
       if (this.random.next() < varietyProb) {
@@ -550,7 +547,7 @@ export class TranceBrain {
                     type: 'accompaniment',
                     note: this.constrainAccompanimentOctave(root + interval),
                     time: t * TICK_TO_BEAT,
-                    duration: 3.5 * TICK_TO_BEAT, // #ЗАЧЕМ: ПЛАН №3030. Продлено для мягкости.
+                    duration: 3.5 * TICK_TO_BEAT, 
                     weight: 0.4 + (tension * 0.1),
                     technique: 'swell',
                     dynamics: 'p',
@@ -569,17 +566,22 @@ export class TranceBrain {
     const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
     const barOffset = mosaicBar * (TICKS_PER_BAR / timeScale);
     const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
-    const goldenTicks = [0, 3, 6, 9];
     
-    const useGoldenFilter = barNotes.length > 3;
-    const finalNotes = useGoldenFilter 
-        ? barNotes.filter(n => goldenTicks.some(gt => Math.abs((n.t - barOffset) - gt) < 0.1))
+    // #ЗАЧЕМ: ПЛАН №3035. Переход к вероятностному прореживанию вместо жесткой отсечки.
+    // Это сохраняет 16-й "ролл" и устраняет эффект "тянущего" звука.
+    const useDensityGuard = barNotes.length > 8; 
+    const finalNotes = useDensityGuard 
+        ? barNotes.filter(n => {
+            const relT = n.t - barOffset;
+            const isGolden = this.GOLDEN_TICKS.some(gt => Math.abs(relT - gt) < 0.1);
+            return isGolden || (this.random.next() < 0.5); // 50% шанс сохранить офф-бит
+        })
         : barNotes;
 
     return finalNotes.map((n) => {
       const relativeTick = n.t - barOffset;
       let weight = 0.8;
-      let durationScale = useGoldenFilter ? 1.5 : 1.0;
+      let durationScale = 1.0;
       
       const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition;
       return {
@@ -602,8 +604,9 @@ export class TranceBrain {
     
     const rawEvents = [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.random.next() < 0.4);
     
-    const filteredTicks = rawEvents.length > 3 
-        ? rawEvents.filter(t => goldenTicks.some(gt => Math.abs(t - gt) < 0.1))
+    // #ЗАЧЕМ: ПЛАН №3035. Тот же принцип для арпеджио.
+    const filteredTicks = rawEvents.length > 4 
+        ? rawEvents.filter(t => goldenTicks.some(gt => Math.abs(t - gt) < 0.1) || this.random.next() < 0.4)
         : rawEvents;
 
     return filteredTicks.map(t => ({
@@ -624,10 +627,10 @@ export class TranceBrain {
     const barOffset = mosaicBar * TICKS_PER_BAR;
     const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
     
-    const goldenTicks = [0, 3, 6, 9];
-    const useGoldenFilter = barNotes.length > 3;
-    const finalNotes = useGoldenFilter 
-        ? barNotes.filter(n => goldenTicks.some(gt => Math.abs((n.t - barOffset) - gt) < 0.1))
+    // #ЗАЧЕМ: ПЛАН №3035. Ослабление фильтрации для аккомпанемента.
+    const useDensityGuard = barNotes.length > 6;
+    const finalNotes = useDensityGuard 
+        ? barNotes.filter(n => this.GOLDEN_TICKS.some(gt => Math.abs((n.t - barOffset) - gt) < 0.1) || this.random.next() < 0.3)
         : barNotes;
 
     return finalNotes.map(n => {
@@ -637,7 +640,7 @@ export class TranceBrain {
         type: type,
         note: finalNote,
         time: (n.t - barOffset) * TICK_TO_BEAT,
-        duration: n.d * TICK_TO_BEAT, // #ЗАЧЕМ: ПЛАН №3030. Снят лимит Math.min(n.d, 6).
+        duration: n.d * TICK_TO_BEAT, 
         weight: 0.4,
         technique: 'hit'
       };
