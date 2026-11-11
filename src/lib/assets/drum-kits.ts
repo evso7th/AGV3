@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Drum Arsenal Protocol V2.6.
+ * @fileOverview Drum Arsenal Protocol V2.7.
  * #ЗАЧЕМ: Этот файл — центральный "Арсенал Барабанщика".
- * #ОБНОВЛЕНО (ПЛАН №2100): Жанр Trance теперь является полным алиасом Foundry для 100% унификации.
+ * #ОБНОВЛЕНО (ПЛАН №3200): Регги теперь использует Tight Blues Kit (без гулких киков).
  */
 
 import type { DrumKit, DrumKitLibrary, InstrumentType } from '@/types/fractal';
@@ -10,6 +10,11 @@ import type { DrumKit, DrumKitLibrary, InstrumentType } from '@/types/fractal';
 const ALL_KICKS: InstrumentType[] = [
     'drum_kick', 'drum_cajon_kick', 'drum_drum_kick_reso', 'drum_kick_drum6', 'drum_kick_soft',
     'drum_edm_kick', 'drum_prog_house_kick', 'drum_deep_tech_kick', 'drum_standard_tech_kick', 'drum_quality_kick'
+];
+
+// #ЗАЧЕМ: ПЛАН №3200. Список плотных киков без гула для Регги.
+const TIGHT_KICKS: InstrumentType[] = [
+    'drum_kick_drum6', 'drum_kick_soft', 'drum_standard_tech_kick', 'drum_quality_kick', 'drum_foundry_quality'
 ];
 
 const FOUNDRY_KICKS: InstrumentType[] = [
@@ -48,7 +53,6 @@ const FOUNDRY_CONFIG = {
 
 export const DRUM_KITS: DrumKitLibrary = {
     foundry: FOUNDRY_CONFIG,
-    // #ЗАЧЕМ: ПЛАН №2100. Прямое наследование для Trance (psybient).
     trance: FOUNDRY_CONFIG,
 
     ambient: {
@@ -91,7 +95,8 @@ export const DRUM_KITS: DrumKitLibrary = {
 
     reggae: {
         standard: { 
-            kick: ALL_KICKS, 
+            // #ЗАЧЕМ: ПЛАН №3200. Регги теперь использует только плотные блюзовые кики.
+            kick: TIGHT_KICKS, 
             snare: ALL_SNARES, 
             hihat: ALL_HIHATS, 
             ride: ALL_RIDES, 
