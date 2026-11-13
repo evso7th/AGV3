@@ -18,7 +18,7 @@ const ENABLE_NON_BASS_REVERB = false; // ⚠️ CPU: конволвер на и�
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 export let globalActiveVoices = new Set<any>();
-let globalVoiceLimit = 128; 
+let globalVoiceLimit = 128;
 
 // PATCH B3 HELPERS
 const ROLE_ALIASES: Record<string, string> = {
@@ -53,7 +53,7 @@ const STEAL_PRIORITY: Record<string, number> = {
     'accompaniment': 2,
     'harmony': 2,
     'bass': 3,
-    'pianoAccompaniment': 4 
+    'pianoAccompaniment': 4
 };
 
 const VOICE_BALANCE: Record<string, number> = {
