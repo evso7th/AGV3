@@ -1,32 +1,47 @@
 /**
- * @fileOverview Центральная фабрика инструментов V17.4 — "Signal Path Integrity".
- * #ЗАЧЕМ: Аудит-патч #3501. Исправление шести критических дефектов в сигнальном тракте и логике.
- * #ЧТО:  1. HPF теперь в цепи, а не параллельно.
- *        2. `setPreset` пересчитывает тон (notch/peaking) и реверб.
- *        3. Key-track исправлен (не инвертирован), зависимость от темпа убрана.
- *        4. Drive-кривая нормализована по громкости.
- *        5. Voice stealing использует fade-out 15мс, а не hard-stop.
- *        6. Баланс громкости и приоритеты ARP теперь зависят от РОЛИ, а не типа инструмента.
+ * @fileOverview Центральная фабрика инструментов V17.5 — "Determinism & Timing Integrity".
+ * #ЗАЧЕМ: Аудит-патчи #3502. Исправление техдолга по таймингам, предсказуемости и маршрутизации.
+ * #ЧТО:  1. Корректное чтение LPF/Q из пресетов (D1).
+ *        2. Исправлена логика ADSR для сверхкоротких нот (D8).
+ *        3. Введен ARP-aware лимит на время релиза для экономии голосов (D7).
+ *        4. Устранен дублирующийся выход при вызове .connect() (D6).
+ *        5. Math.random() заменен на seeded PRNG для полной предсказуемости (D5).
+ *        6. Удален мертвый код (D9).
  */
 
 import { dbToGain } from './guitar-loudness';
 
-// ───── AUDIT PATCH 3501 FLAGS ─────
+// ───── AUDIT PATCH 3501/3502 FLAGS ─────
 const ENABLE_ROLE_BALANCE = true;
-const ENABLE_NON_BASS_REVERB = false; // ⚠️ CPU: конволвер на инструмент. Включать после замеров.
+const ENABLE_NON_BASS_REVERB = false;
+const ENABLE_RELEASE_CAP = true;
+
+
+// ───── PATCH D5 (DETERMINISM) HELPERS ─────
+const mulberry32 = (a: number) => () => {
+  a |= 0; a = (a + 0x6D2B79F5) | 0;
+  let t = Math.imul(a ^ (a >>> 15), 1 | a);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+const hash32 = (...nums: number[]) => {
+  let h = 0x811c9dc5;
+  for (const n of nums) { h ^= (n | 0); h = Math.imul(h, 0x01000193); }
+  return h >>> 0;
+};
+const TEXTURE_SEED = 0x9E3779B9;
+let instrumentCounter = 0;
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 export let globalActiveVoices = new Set<any>();
 let globalVoiceLimit = 128;
 
-// PATCH B3 HELPERS
 const ROLE_ALIASES: Record<string, string> = {
   sparkle: 'sparkles', rhodes: 'pianoAccompaniment', piano: 'pianoAccompaniment'
 };
 const normalizeRole = (r?: string | null) => (r ? (ROLE_ALIASES[r] ?? r) : null);
 
-// PATCH B4 HELPERS
 const STEAL_FADE_SEC = 0.015;
 const fadingVoices = new Set<any>();
 
@@ -57,7 +72,7 @@ const STEAL_PRIORITY: Record<string, number> = {
 };
 
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.75, // Было 0.375, но без sub-компенсации это слишком тихо.
+  bass: 0.75,
   melody: 1.50,
   accompaniment: 1.50,
   drums: 0.50,
@@ -78,11 +93,10 @@ export const globalAllNotesOff = () => {
     Array.from(fadingVoices).forEach(v => hardKill(v));
 };
 
-// PATCH B4: Fade-out logic for voice stealing
 export const deepCleanup = (voiceRecord: any, immediate = false) => {
   if (!voiceRecord || voiceRecord.disposed) return;
   voiceRecord.disposed = true;
-  globalActiveVoices.delete(voiceRecord); // Квота освобождается СРАЗУ
+  globalActiveVoices.delete(voiceRecord);
   const gain: GainNode | null = voiceRecord.voiceState?.node ?? null;
   const ctx: AudioContext | null = voiceRecord.ctx ?? null;
   if (immediate || !gain || !ctx) { hardKill(voiceRecord); return; }
@@ -103,7 +117,6 @@ export const deepCleanup = (voiceRecord: any, immediate = false) => {
   fadingVoices.add(voiceRecord);
 };
 
-// PATCH B4: Garbage collection for fading voices
 export const collectExpiredVoices = (audioCtxTime: number) => {
   for (const v of fadingVoices) if (v.hardStopTime <= audioCtxTime) hardKill(v);
   for (const voice of globalActiveVoices) {
@@ -111,7 +124,6 @@ export const collectExpiredVoices = (audioCtxTime: number) => {
   }
 };
 
-// PATCH B3: Use role for priority
 export const enforceVoiceLimit = () => {
     if (globalActiveVoices.size <= globalVoiceLimit) return;
     const toKillCount = globalActiveVoices.size - globalVoiceLimit;
@@ -131,15 +143,13 @@ export const enforceVoiceLimit = () => {
 const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
+// D9: Removed dead code `if (type === 'bass')`
 const getADSR = (p: any, params?: any, type?: string) => {
     const a = p.adsr || p;
     let rawA = isFinite(params?.attack) ? params.attack : (isFinite(a.a) ? a.a : (isFinite(a.attack) ? a.attack : 0.01));
     let rawD = isFinite(params?.decay) ? params.decay : (isFinite(a.d) ? a.d : (isFinite(a.decay) ? a.decay : 0.1));
     let rawS = isFinite(params?.sustain) ? params.sustain : (isFinite(a.s) ? a.s : (isFinite(a.sustain) ? a.sustain : 0.7));
     let rawR = isFinite(params?.release) ? params.release : (isFinite(a.r) ? a.r : (isFinite(a.release) ? a.release : 0.3));
-    
-    if (type === 'bass') rawA = Math.max(rawA, 0.07);
-    
     return { a: rawA, d: rawD, s: rawS, r: rawR };
 };
 
@@ -171,7 +181,6 @@ const getOrganWave = (ctx: AudioContext, drawbars: number[]): PeriodicWave =>
         return ctx.createPeriodicWave(real, imag);
     });
 
-// PATCH B6: Normalized drive curve
 const curveCache = new Map<string, Float32Array>();
 const DRIVE_REF_LEVEL = 0.45;
 const shapeAt = (type: string, x: number, k: number) =>
@@ -200,7 +209,8 @@ const getNoiseBuffer = (ctx: AudioContext): AudioBuffer => {
     const len = Math.floor(ctx.sampleRate * 0.5);
     const buf = ctx.createBuffer(1, len, ctx.sampleRate);
     const d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const rand = mulberry32(TEXTURE_SEED); // D5: Use seeded PRNG
+    for (let i = 0; i < len; i++) d[i] = rand() * 2 - 1;
     noiseCache.set(ctx, buf); return buf;
 };
 
@@ -211,9 +221,10 @@ const getReverbIR = (ctx: AudioContext): AudioBuffer => {
     const buf = ctx.createBuffer(2, len, ctx.sampleRate);
     for (let ch = 0; ch < 2; ch++) {
         const d = buf.getChannelData(ch);
+        const rand = mulberry32(TEXTURE_SEED + ch); // D5: Use seeded PRNG
         for (let i = 0; i < len; i++) {
             const t = i / len;
-            d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 2.6);
+            d[i] = (rand() * 2 - 1) * Math.pow(1 - t, 2.6);
         }
     }
     irCache.set(ctx, buf); return buf;
@@ -221,6 +232,24 @@ const getReverbIR = (ctx: AudioContext): AudioBuffer => {
 
 const BASS_PURITY_CHAIN = true;
 const SUB_MIN_HZ = 35;
+
+// D1: Honest filter readers
+const readCutoff = (v: any): number | null => {
+  if (typeof v === 'number' && isFinite(v) && v > 0) return v;
+  if (v && typeof v === 'object' && isFinite(v.cutoff) && v.cutoff > 0) return v.cutoff;
+  return null;
+};
+const resolveBaseCutoff = (p: any): number =>
+  readCutoff(p?.post?.lpf) ?? readCutoff(p?.lpf) ?? readCutoff(p?.filter) ?? 2000;
+
+const resolveQ = (p: any): number => {
+  const q = (typeof p?.lpf === 'object' ? p.lpf.q : undefined) ?? p?.filter?.q ?? p?.post?.q;
+  return isFinite(q) ? clamp(q, 0.0001, 12) : 0.7;
+};
+
+// D7: Release cap tables
+const RELEASE_CAP_DESKTOP: Record<string, number> = { guitar: 1.6, organ: 0.35, synth: 2.6, bass: 1.2 };
+const RELEASE_CAP_MOBILE:  Record<string, number> = { guitar: 0.9, organ: 0.25, synth: 1.6, bass: 0.8 };
 
 const createIndependentVoice = (
     ctx: AudioContext,
@@ -234,32 +263,48 @@ const createIndependentVoice = (
     instrumentId: string,
     sharedDelayNode: AudioNode | null = null,
     eventParams: any = null,
-    tempo: number = 72, // #PATCH_B2: Сохранён для совместимости, на тембр не влияет.
-    role: string | null = null // PATCH B3: Role from instrument manager
+    tempo: number = 72,
+    role: string | null = null,
+    extras?: { rand?: () => number } // D5: Pass PRNG
 ) => {
     const f0 = midiToHz(midi);
     const adsr = getADSR(preset, eventParams, type);
     const now = Math.max(when, ctx.currentTime);
+    const rand = extras?.rand ?? Math.random; // D5: Use passed PRNG or fallback
 
     const isEcho = eventParams?.isEcho === true;
     const isDub = eventParams?.isDub === true;
 
+    // D9: FAST-ATTACK BASS / PHASE-COHERENT START
+    // Фазовая когерентность достигается только у нот с одинаковым `when`:
+    // осцилляторы стартуют в один и тот же сэмпл с нулевой фазой.
+    // Непрерывность фазы между последовательными нотами недостижима без
+    // персистентного осциллятора (моно-режим) — вне скоупа.
     const isPhaseLocked = (type === 'bass' && preset.phaseLock !== false);
-    const attackTime = isPhaseLocked ? 0.002 : adsr.a;
     
     const humanizeCents = preset.humanize?.pitchCents || 0;
-    const randomDetune = (Math.random() * 2 - 1) * humanizeCents;
+    const randomDetune = (rand() * 2 - 1) * humanizeCents;
     
-    const releaseTime = adsr.r;
-    let peak = velocity * (isEcho ? 0.65 : 0.45); 
+    let peak = velocity * (isEcho ? 0.65 : 0.45);
 
     const voiceGain = ctx.createGain();
-    voiceGain.gain.setValueAtTime(0, now);
     const nodes: AudioNode[] = [voiceGain];
 
-    const noteOffTime = now + duration;
-    const releaseTimeConstant = Math.max(releaseTime / 3, 0.08); 
-    const expirationTime = now + duration + (releaseTimeConstant * 5) + 0.5;
+    // D8: Robust envelope timing for short notes
+    const MIN_EVENT = 0.002;
+    const dur = Math.max(duration, 0.02);
+    const rawAttack = isPhaseLocked ? 0.002 : adsr.a;
+    const attackTime = clamp(Math.min(rawAttack, dur * 0.4), type === 'bass' ? 0.005 : 0.001, 8);
+    const decayTau = Math.max(adsr.d / 3, 0.001);
+    const noteOffTime = now + Math.max(dur, attackTime + MIN_EVENT);
+    const releaseStart = Math.max(noteOffTime, now + attackTime + MIN_EVENT);
+
+    // D7: ARP-aware release cap
+    const capTable = globalVoiceLimit <= 60 ? RELEASE_CAP_MOBILE : RELEASE_CAP_DESKTOP;
+    const releaseTime = ENABLE_RELEASE_CAP ? Math.min(adsr.r, capTable[type] ?? 2.0) : adsr.r;
+    const releaseTau = Math.max(releaseTime / 3, 0.02);
+    const expirationTime = releaseStart + releaseTau * 5 + 0.03;
+
 
     if (type === 'guitar') {
         const osc = ctx.createOscillator();
@@ -299,7 +344,6 @@ const createIndependentVoice = (
             nodes.push(osc, g);
         });
 
-        // Sub-oscillator logic (unchanged by patches)
         let subApplied = 0;
         if (type === 'bass' && preset.sub?.on) {
             const subHz = f0 * Math.pow(2, preset.sub.octave ?? -1);
@@ -328,7 +372,7 @@ const createIndependentVoice = (
 
     if (driveAmount > 0.01) {
         const shaper = ctx.createWaveShaper();
-        shaper.curve = getDriveCurve(driveType, driveAmount); // Uses PATCH B6
+        shaper.curve = getDriveCurve(driveType, driveAmount);
         shaper.oversample = '2x';
         chainHead.connect(shaper);
         chainHead = shaper;
@@ -338,14 +382,13 @@ const createIndependentVoice = (
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
 
-    const isBass = type === 'bass';
-    const baseCutoff = isBass
-        ? (preset.post?.lpf ?? preset.lpf?.cutoff ?? preset.filter?.cutoff ?? 2000)
-        : (preset.post?.lpf || preset.lpf?.cutoff || 2000);
+    // D1: Use new filter helpers
+    const baseCutoff = resolveBaseCutoff(preset);
+    filter.Q.value = resolveQ(preset);
 
-    // This block is from the successfully applied PATCH B2
     const NYQUIST_SAFE = Math.min(16000, ctx.sampleRate * 0.45);
     let finalCutoff = baseCutoff;
+    const isBass = type === 'bass';
     if (isBass) {
         const kt = preset.filter?.keyTrack;
         if (kt) finalCutoff *= Math.pow(2, (midi - 36) * kt / 12);
@@ -359,13 +402,7 @@ const createIndependentVoice = (
         filter.frequency.setValueAtTime(finalCutoff, now);
         filter.frequency.setTargetAtTime(finalCutoff * 0.6, now + 0.3, 1.2);
     } else {
-        filter.frequency.value = finalCutoff; // Tempo multiplier removed by PATCH B2
-    }
-
-    if (isBass) {
-        filter.Q.value = preset.lpf?.q ?? preset.filter?.q ?? 0.7; 
-    } else {
-        filter.Q.value = type === 'guitar' ? 0.7 : (preset.lpf?.q || 0.7);
+        filter.frequency.value = finalCutoff;
     }
 
     chainHead.connect(filter);
@@ -392,17 +429,16 @@ const createIndependentVoice = (
     if (sharedDelayNode && (preset.delay?.mix > 0.01 || isDub)) chainHead.connect(sharedDelayNode);
     chainHead.connect(output);
 
-    // PATCH B3: Use role-based balance
     const balanceKey = (ENABLE_ROLE_BALANCE ? (normalizeRole(role) ?? type) : type);
     const balance = VOICE_BALANCE[balanceKey] ?? 1.0;
     const level = clamp(peak * balance, 0, 1.5);
 
+    // D8: Use new timing for envelope
     voiceGain.gain.setValueAtTime(0, now);
     voiceGain.gain.linearRampToValueAtTime(level, now + attackTime);
-    voiceGain.gain.setTargetAtTime(level * adsr.s, now + attackTime, Math.max(adsr.d / 3, 0.001));
-    voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
+    voiceGain.gain.setTargetAtTime(level * adsr.s, now + attackTime, decayTau);
+    voiceGain.gain.setTargetAtTime(0.0001, releaseStart, releaseTau);
 
-    // PATCH B3 & B4: Add role and ctx to the record
     const record = { nodes, voiceState: { node: voiceGain, startTime: now }, disposed: false,
                      type, role: balanceKey, instrumentId, expirationTime, ctx };
     globalActiveVoices.add(record);
@@ -426,13 +462,24 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     type = 'synth',
     preset = {} as any,
     output = ctx.destination,
-    role = null // PATCH B3: Role from config
-}: { type?: string, preset?: any, output?: AudioNode, role?: string | null } = {}): Promise<InstrumentAPI> {
+    role = null,
+    seed // D5: Instrument seed
+}: { type?: string, preset?: any, output?: AudioNode, role?: string | null, seed?: number } = {}): Promise<InstrumentAPI> {
     
-    const instrumentId = `inst_${Math.random().toString(36).substr(2, 9)}`;
+    // D5: Seeded instrument ID
+    const instSeed = isFinite(seed as number)
+      ? hash32(seed as number, instrumentCounter++)
+      : (Math.random() * 4294967296) >>> 0;
+    const instrumentId = `inst_${instSeed.toString(36)}`;
+    let noteCounter = 0;
+
     let currentPreset = { ...preset };
     const instrumentGain = ctx.createGain();
     instrumentGain.gain.setValueAtTime(isFinite(currentPreset.volume) ? currentPreset.volume : 0.7, ctx.currentTime);
+
+    // D6: Routing state
+    let currentOut: AudioNode = output;
+    let destroyed = false;
 
     const panner = ctx.createStereoPanner();
     const hpf = ctx.createBiquadFilter();
@@ -507,8 +554,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         const want = isFinite(mix) && mix > 0.001;
         if (want && !convolver.buffer) convolver.buffer = getReverbIR(ctx);
         reverbWet.gain.setTargetAtTime(want ? mix : 0, ctx.currentTime, 0.05);
-        if (want && !reverbActive) { reverbWet.connect(output); reverbActive = true; }
-        else if (!want && reverbActive) { try { reverbWet.disconnect(output); } catch {} reverbActive = false; }
+        // D6: Connect to currentOut, not hardcoded output
+        if (want && !reverbActive) { reverbWet.connect(currentOut); reverbActive = true; }
+        else if (!want && reverbActive) { try { reverbWet.disconnect(currentOut); } catch {} reverbActive = false; }
     };
     applyReverb(currentPreset);
 
@@ -516,14 +564,13 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     if (comp) { head.connect(comp); head = comp; }
     if (makeup) { head.connect(makeup); head = makeup; }
     
-    // This is from PATCH B1
     head.connect(hpf);
     hpf.connect(mudCut);
 
     let tail: AudioNode = mudCut;
     eqNodes.forEach(n => { tail.connect(n); tail = n; });
     tail.connect(panner);
-    panner.connect(output);
+    panner.connect(currentOut); // D6: Connect to currentOut
 
     const sharedDelay = ctx.createDelay(2.0);
     const feedback = ctx.createGain();
@@ -539,23 +586,35 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     };
     updateFX();
 
-    // PATCH B4: Helper for cleanup
     const killOwn = (immediate: boolean) => {
       Array.from(globalActiveVoices).filter(v => v.instrumentId === instrumentId).forEach(v => deepCleanup(v, immediate));
       Array.from(fadingVoices).filter(v => v.instrumentId === instrumentId).forEach(v => hardKill(v));
     };
+    
+    // D6: Routing logic
+    const routeTo = (dest: AudioNode) => {
+      if (destroyed || dest === currentOut) return;
+      try { panner.disconnect(currentOut); } catch {}
+      if (reverbActive) { try { reverbWet.disconnect(currentOut); } catch {} }
+      currentOut = dest;
+      panner.connect(currentOut);
+      if (reverbActive) reverbWet.connect(currentOut);
+    };
 
     return {
-        get preset() { return currentPreset; }, // From PATCH B8
+        get preset() { return currentPreset; },
         noteOn: (midi, when = ctx.currentTime, velocity = 1.0, duration = 1.0, params = null) => {
-            if (!isFinite(midi) || midi < 0 || midi > 127) return;
-            // PATCH B3: pass role down to voice
+            if (destroyed) return; // D6
+            // D5: Create seeded random function for this note
+            const noteSeed = hash32(instSeed, noteCounter++, midi, params?.tick ?? 0);
+            const rand = mulberry32(noteSeed);
+
             createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration,
               instrumentId, sharedDelay, params, params?.tempo || 72,
-              normalizeRole(params?.role ?? role ?? null));
+              normalizeRole(params?.role ?? role ?? null), { rand });
         },
-        allNotesOff: () => killOwn(false), // From PATCH B4
-        setPreset: (p) => { // From PATCH B8
+        allNotesOff: () => killOwn(false),
+        setPreset: (p) => {
             const prevVolume = currentPreset?.volume;
             currentPreset = { ...p };
             const vol = isFinite(p?.volume) ? p.volume : (isFinite(prevVolume) ? prevVolume : 0.7);
@@ -567,15 +626,17 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             applyEq(p);
         },
         setVolume: (v) => { instrumentGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.02); },
-        dispose: () => { // From PATCH B4
+        dispose: () => {
+            destroyed = true; // D6
             killOwn(true);
             [instrumentGain, hpf, mudCut, panner, sharedDelay, feedback, delayMix,
              comp, makeup, convolver, reverbWet, ...eqNodes].forEach(n => n?.disconnect());
+            currentOut = null as any; // D6
         },
         disconnect: () => { 
             [instrumentGain, hpf, mudCut, panner, sharedDelay, feedback, delayMix,
              comp, makeup, convolver, reverbWet, ...eqNodes].forEach(n => n?.disconnect()); 
         },
-        connect: (dest) => panner.connect(dest || output)
+        connect: (dest) => routeTo(dest || output) // D6
     };
 }

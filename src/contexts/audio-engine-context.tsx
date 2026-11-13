@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Audio Engine Context V87.5 — "Loudness Expansion Protocol".
- * #ЗАЧЕМ: ПЛАН №3035 + Увеличение базовой громкости мастер-канала до 0.85.
+ * @fileOverview Audio Engine Context V87.6 — "Gain Integrity Fix".
+ * #ЗАЧЕМ: Исправление потерь громкости (двойной баланс и мертвые преампы синт-менеджеров).
  */
 'use client';
 
@@ -30,19 +30,8 @@ import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 
-const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.475, 
-  melody: 0.1125, 
-  accompaniment: 0.30, 
-  drums: 0.65,
-  sparkles: 0.65,
-  sfx: 0.65,
-  harmony: 0.15, 
-  pianoAccompaniment: 0.3,
-};
-
 const SAMPLER_DEFAULTS: Record<string, number> = {
-    master: 0.85, // #ЗАЧЕМ: Новый эталон громкости MST
+    master: 0.85,
     acoustic: 0.15, 
     electric: 0.15, 
     piano: 0.2, 
@@ -247,6 +236,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       darkTelecasterSamplerRef.current?.setPreampGain(2.2 * electricBase); 
       iCs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * (gains.cs80 || 1.0));
       
+      // #ЗАЧЕМ: Исправление "Мертвого преампа" для синтезаторных путей.
       melodyManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.electric * electricBase); 
       accompanimentManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.piano * pianoBase);
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * bassBase);
@@ -284,8 +274,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const handleTogglePlay = useCallback(async (playing: boolean) => {
       const context = audioContextRef.current; if (!context || !workerRef.current) return;
       
-      const isMobile = typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
       if (playing) { 
           if (context.state === 'suspended') await context.resume(); 
           setIsPlayingState(true); 
@@ -346,7 +334,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setCalibrationGain('master', volume);
         return;
     }
-    const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
+    
+    // #ЗАЧЕМ: Устранение двойного умножения на VOICE_BALANCE. 
+    // Баланс уже применен внутри instrument-factory.ts для каждой ноты.
+    const balancedVolume = volume; 
     
     const now = audioContextRef.current?.currentTime || 0;
     const gainNode = gainNodesRef.current[part];
@@ -381,7 +372,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const duckBass = (hitTime: number) => {
         if (!audioContextRef.current || !gainNodesRef.current.bass || !settingsRef.current) return;
         const bassGain = gainNodesRef.current.bass.gain;
-        const baseVol = (settingsRef.current.instrumentSettings.bass.volume || 0.5) * (VOICE_BALANCE['bass'] || 0.5);
+        const baseVol = (settingsRef.current.instrumentSettings.bass.volume || 0.5); 
         bassGain.cancelScheduledValues(hitTime);
         bassGain.setValueAtTime(baseVol, hitTime);
         bassGain.setTargetAtTime(baseVol * 0.2, hitTime, 0.015); 
@@ -564,8 +555,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 const now = ctx.currentTime;
                 const tempo = payload.actualBpm || 75;
 
-                // #ЗАЧЕМ: ПЛАН №3035. Адаптивный Lookahead.
-                // Для Транса и плотных тактов увеличиваем буфер до 0.55с, чтобы избежать заиканий.
                 const isHighLoad = tempo > 120 || payload.events.length > 25;
                 const lookahead = isHighLoad ? 0.55 : 0.35;
 
