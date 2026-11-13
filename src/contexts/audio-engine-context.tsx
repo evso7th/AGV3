@@ -1,6 +1,6 @@
 
 /**
- * @fileOverview Audio Engine Context V87.6 — "Gain Integrity Fix".
+ * @fileOverview Audio Engine Context V87.7 — "Gain Integrity Fix".
  * #ЗАЧЕМ: Исправление потерь громкости (двойной баланс и мертвые преампы синт-менеджеров).
  */
 'use client';
@@ -39,6 +39,17 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     chords: 1.2,
     bass: 1.0,
     cs80: 0.4
+};
+
+const VOICE_BALANCE: Record<string, number> = {
+  bass: 0.75,
+  melody: 1.50,
+  accompaniment: 1.50,
+  drums: 0.50,
+  sparkles: 0.80,
+  sfx: 0.40,
+  harmony: 0.60,
+  pianoAccompaniment: 0.50,
 };
 
 interface AudioEngineContextType {
@@ -335,9 +346,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         return;
     }
     
-    // #ЗАЧЕМ: Устранение двойного умножения на VOICE_BALANCE. 
-    // Баланс уже применен внутри instrument-factory.ts для каждой ноты.
-    const balancedVolume = volume; 
+    // #ЗАЧЕМ: Применение VOICE_BALANCE для каждой роли.
+    const balance = VOICE_BALANCE[part] ?? 1.0;
+    const balancedVolume = volume * balance;
     
     const now = audioContextRef.current?.currentTime || 0;
     const gainNode = gainNodesRef.current[part];

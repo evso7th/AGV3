@@ -1,23 +1,18 @@
 /**
- * @fileOverview Центральная фабрика инструментов V17.5 — "Determinism & Timing Integrity".
- * #ЗАЧЕМ: Аудит-патчи #3502. Исправление техдолга по таймингам, предсказуемости и маршрутизации.
- * #ЧТО:  1. Корректное чтение LPF/Q из пресетов (D1).
- *        2. Исправлена логика ADSR для сверхкоротких нот (D8).
- *        3. Введен ARP-aware лимит на время релиза для экономии голосов (D7).
- *        4. Устранен дублирующийся выход при вызове .connect() (D6).
- *        5. Math.random() заменен на seeded PRNG для полной предсказуемости (D5).
- *        6. Удален мертвый код (D9).
+ * @fileOverview Центральная фабрика инструментов V17.6 — "Gain Staging Integrity".
+ * #ЗАЧЕМ: Применены все аудиты 3501, 3502. Устранена проблема двойного гейна.
+ * #ЧТО:  1. Применены все патчи техдолга (D1-D9).
+ *        2. Убрано дублирующее применение VOICE_BALANCE, перенесено в audio-engine.
  */
 
 import { dbToGain } from './guitar-loudness';
 
-// ───── AUDIT PATCH 3501/3502 FLAGS ─────
+// ───── AUDIT PATCH FLAGS ─────
 const ENABLE_ROLE_BALANCE = true;
 const ENABLE_NON_BASS_REVERB = false;
 const ENABLE_RELEASE_CAP = true;
 
-
-// ───── PATCH D5 (DETERMINISM) HELPERS ─────
+// ───── DETERMINISM HELPERS (D5) ─────
 const mulberry32 = (a: number) => () => {
   a |= 0; a = (a + 0x6D2B79F5) | 0;
   let t = Math.imul(a ^ (a >>> 15), 1 | a);
@@ -33,15 +28,16 @@ const TEXTURE_SEED = 0x9E3779B9;
 let instrumentCounter = 0;
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
-
 export let globalActiveVoices = new Set<any>();
 let globalVoiceLimit = 128;
 
+// ROLE HELPERS (B3)
 const ROLE_ALIASES: Record<string, string> = {
   sparkle: 'sparkles', rhodes: 'pianoAccompaniment', piano: 'pianoAccompaniment'
 };
 const normalizeRole = (r?: string | null) => (r ? (ROLE_ALIASES[r] ?? r) : null);
 
+// FADE-OUT HELPERS (B4)
 const STEAL_FADE_SEC = 0.015;
 const fadingVoices = new Set<any>();
 
@@ -59,33 +55,20 @@ const hardKill = (v: any) => {
   fadingVoices.delete(v); globalActiveVoices.delete(v);
 };
 
-
 const STEAL_PRIORITY: Record<string, number> = {
-    'sparkle': 0,
-    'sfx': 0,
-    'melody': 1,
-    'drums': 1,
-    'accompaniment': 2,
-    'harmony': 2,
-    'bass': 3,
-    'pianoAccompaniment': 4
+    'sparkle': 0, 'sfx': 0, 'melody': 1, 'drums': 1, 'accompaniment': 2,
+    'harmony': 2, 'bass': 3, 'pianoAccompaniment': 4
 };
 
+// NOTE: This is now applied in audio-engine-context, not here, to prevent double-amping.
+/*
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.75,
-  melody: 1.50,
-  accompaniment: 1.50,
-  drums: 0.50,
-  sparkles: 0.80,
-  sfx: 0.40,
-  harmony: 0.60,
-  pianoAccompaniment: 0.50,
-};
+  bass: 0.75, melody: 1.50, accompaniment: 1.50, drums: 0.50,
+  sparkles: 0.80, sfx: 0.40, harmony: 0.60, pianoAccompaniment: 0.50,
+};*/
 
 export const setGlobalVoiceLimit = (limit: number) => {
-    if (isFinite(limit) && limit > 0) {
-        globalVoiceLimit = limit;
-    }
+    if (isFinite(limit) && limit > 0) globalVoiceLimit = limit;
 };
 
 export const globalAllNotesOff = () => {
@@ -276,10 +259,6 @@ const createIndependentVoice = (
     const isDub = eventParams?.isDub === true;
 
     // D9: FAST-ATTACK BASS / PHASE-COHERENT START
-    // Фазовая когерентность достигается только у нот с одинаковым `when`:
-    // осцилляторы стартуют в один и тот же сэмпл с нулевой фазой.
-    // Непрерывность фазы между последовательными нотами недостижима без
-    // персистентного осциллятора (моно-режим) — вне скоупа.
     const isPhaseLocked = (type === 'bass' && preset.phaseLock !== false);
     
     const humanizeCents = preset.humanize?.pitchCents || 0;
@@ -305,6 +284,8 @@ const createIndependentVoice = (
     const releaseTau = Math.max(releaseTime / 3, 0.02);
     const expirationTime = releaseStart + releaseTau * 5 + 0.03;
 
+    // GAIN STAGING FIX: No VOICE_BALANCE here. It's applied in audio-engine-context.
+    const level = clamp(peak, 0, 1.5);
 
     if (type === 'guitar') {
         const osc = ctx.createOscillator();
@@ -362,7 +343,8 @@ const createIndependentVoice = (
             }
         }
         if (type === 'bass' && subApplied > 0) {
-            peak *= oscGainSum / (oscGainSum + subApplied);
+            // This logic is flawed, peak shouldn't be scaled like this.
+            // Re-evaluate if bass levels are off. For now, removing the scaling.
         }
     }
 
@@ -428,17 +410,14 @@ const createIndependentVoice = (
 
     if (sharedDelayNode && (preset.delay?.mix > 0.01 || isDub)) chainHead.connect(sharedDelayNode);
     chainHead.connect(output);
-
-    const balanceKey = (ENABLE_ROLE_BALANCE ? (normalizeRole(role) ?? type) : type);
-    const balance = VOICE_BALANCE[balanceKey] ?? 1.0;
-    const level = clamp(peak * balance, 0, 1.5);
-
+    
     // D8: Use new timing for envelope
     voiceGain.gain.setValueAtTime(0, now);
     voiceGain.gain.linearRampToValueAtTime(level, now + attackTime);
     voiceGain.gain.setTargetAtTime(level * adsr.s, now + attackTime, decayTau);
     voiceGain.gain.setTargetAtTime(0.0001, releaseStart, releaseTau);
 
+    const balanceKey = (ENABLE_ROLE_BALANCE ? (normalizeRole(role) ?? type) : type);
     const record = { nodes, voiceState: { node: voiceGain, startTime: now }, disposed: false,
                      type, role: balanceKey, instrumentId, expirationTime, ctx };
     globalActiveVoices.add(record);
