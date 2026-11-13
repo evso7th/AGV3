@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Audio Engine Context V87.0 — "Neuro Smoothness Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №3035. Адаптивный Lookahead для высоконагруженных тактов.
+ * @fileOverview Audio Engine Context V87.5 — "Loudness Expansion Protocol".
+ * #ЗАЧЕМ: ПЛАН №3035 + Увеличение базовой громкости мастер-канала до 0.85.
  */
 'use client';
 
@@ -41,7 +42,7 @@ const VOICE_BALANCE: Record<string, number> = {
 };
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
-    master: 0.75, 
+    master: 0.85, // #ЗАЧЕМ: Новый эталон громкости MST
     acoustic: 0.15, 
     electric: 0.15, 
     piano: 0.2, 
@@ -194,7 +195,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const loopingRef = useRef(false);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
-  const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>({ master: 0.70, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, chords: 1.0, bass: 1.0, cs80: 1.0 });
+  const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>({ master: 0.85, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, chords: 1.0, bass: 1.0, cs80: 1.0 });
 
   const calibrationGainsRef = useRef(calibrationGains);
   useEffect(() => {
@@ -229,7 +230,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const applyCalibration = useCallback((gains: Record<string, number>) => {
       if (!audioContextRef.current) return;
       const now = audioContextRef.current.currentTime;
-      const m = gains.master ?? 0.70;
+      const m = gains.master ?? 0.85;
       
       if (masterGainNodeRef.current) {
           masterGainNodeRef.current.gain.cancelScheduledValues(now);

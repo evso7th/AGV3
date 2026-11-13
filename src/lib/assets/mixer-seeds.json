@@ -1,9 +1,10 @@
+
 [
   {
     "id": "seed-neuro",
     "name": "NEURO DEFAULT",
     "values": {
-      "master": 0.70,
+      "master": 0.85,
       "bass": 0.5,
       "melody": 0.5,
       "accompaniment": 0.5,
@@ -19,7 +20,7 @@
     "id": "seed-ambient",
     "name": "SLOW FUSION DEFAULT",
     "values": {
-      "master": 0.70,
+      "master": 0.85,
       "bass": 0.5,
       "melody": 0.5,
       "accompaniment": 0.5,
@@ -35,7 +36,7 @@
     "id": "seed-foundry",
     "name": "DARK TRANCE DEFAULT",
     "values": {
-      "master": 0.70,
+      "master": 0.85,
       "bass": 0.5,
       "melody": 0.5,
       "accompaniment": 0.5,
@@ -51,7 +52,7 @@
     "id": "seed-blues",
     "name": "CAFE BLUES DEFAULT",
     "values": {
-      "master": 0.70,
+      "master": 0.85,
       "bass": 0.5,
       "melody": 0.5,
       "accompaniment": 0.5,
@@ -67,7 +68,7 @@
     "id": "seed-cyber-blues",
     "name": "CYBER BLUES DEFAULT",
     "values": {
-      "master": 0.70,
+      "master": 0.85,
       "bass": 0.5,
       "melody": 0.5,
       "accompaniment": 0.5,
@@ -83,7 +84,7 @@
     "id": "seed-reggae",
     "name": "ROOT REGGEE DEFAULT",
     "values": {
-      "master": 0.70,
+      "master": 0.85,
       "bass": 0.5,
       "melody": 0.5,
       "accompaniment": 0.5,
