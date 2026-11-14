@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Audio Engine Context V87.7 — "Gain Integrity Fix".
- * #ЗАЧЕМ: Исправление потерь громкости (двойной баланс и мертвые преампы синт-менеджеров).
+ * @fileOverview Audio Engine Context V87.8 — "Accompaniment Power Boost".
+ * #ЗАЧЕМ: Увеличение системной громкости аккомпанемента в 2 раза (преамп 0.4).
  */
 'use client';
 
@@ -34,7 +34,7 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 0.85,
     acoustic: 0.15, 
     electric: 0.15, 
-    piano: 0.2, 
+    piano: 0.4, // #ЗАЧЕМ: ПЛАН №4.3. Увеличено с 0.2 до 0.4 для удвоения громкости KEYB.
     orchecial: 0.5, 
     chords: 1.2,
     bass: 1.0,
@@ -247,7 +247,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       darkTelecasterSamplerRef.current?.setPreampGain(2.2 * electricBase); 
       iCs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * (gains.cs80 || 1.0));
       
-      // #ЗАЧЕМ: Исправление "Мертвого преампа" для синтезаторных путей.
       melodyManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.electric * electricBase); 
       accompanimentManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.piano * pianoBase);
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * bassBase);
