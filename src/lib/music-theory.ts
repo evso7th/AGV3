@@ -100,13 +100,14 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         // #ЗАЧЕМ: ПЛАН №3300. Тотальный заслон против шлепков.
         if (part === 'bass') {
             const isAggressive = clean.includes('slap') || clean.includes('rock') || clean.includes('pick') || clean.includes('acid') || clean.includes('house') || clean.includes('foundry');
-            if (isAggressive || genre === 'ambient' || genre === 'foundry' || genre === 'psybient') {
+            if (isAggressive || genre === 'ambient' || genre === 'foundry' || genre === 'psybient' || genre === 'cyber_blues') {
                 return 'bass_jazz_warm'; 
             }
             return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
         }
 
-        const prefix = (genre === 'foundry') ? 'fo' : (genre === 'cyber_blues' ? 'sb' : '');
+        // #ЗАЧЕМ: Cyber Blues теперь использует пресеты Foundry (prefix 'fo').
+        const prefix = (genre === 'foundry' || genre === 'cyber_blues') ? 'fo' : '';
         
         if (clean === 'violin' || clean === 'flute') return 'guitarChords';
 
@@ -429,7 +430,7 @@ export function generateSuiteDNA(
     return {
         harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking',
         drumStyle: 'shuffle_A', soloPlanMap: new Map(), tensionMap, 
-        dynasty: genre === 'blues' ? getDynastyForMood(mood, finalSeed) : undefined,
+        dynasty: genre === 'blues' ? getDynastyForMood(mood, initialSeed) : undefined,
         cloudAxioms, activeAnchorId,
         activeAnchorRoot: activeAnchorRoot || null 
     };
