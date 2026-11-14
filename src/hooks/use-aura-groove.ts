@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V40.3 — "Centralized Mixer Integration".
- * #ЗАЧЕМ: Реализация ПЛАНА №4000. Использование MIXER_SETTINGS для сброса и управления.
+ * @fileOverview Music Control Hook V40.5 — "Factory Presets & Automation".
+ * #ЗАЧЕМ: Реализация ПЛАНА №4000. Заводские пресеты микшера и авто-балансировка.
  */
 'use client';
 
@@ -29,7 +29,7 @@ const LAST_MIX_BY_GENRE_KEY = 'AuraGroove_LastMixByGenre';
 const LAST_EQ_BY_GENRE_KEY = 'AuraGroove_LastEqByGenre';
 const LANG_KEY = 'AuraGroove_Language';
 
-export type PresetItem = { id: string; name: string; values: any; genre?: string };
+export type PresetItem = { id: string; name: string; values: any; genre?: string; isFactory?: boolean };
 
 export interface AuraGrooveProps {
   isPlaying: boolean;
@@ -186,7 +186,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   
   const [eqPresets, setEqPresets] = useState<PresetItem[]>([]);
   const [activeEqPresetId, setActiveEqPresetId] = useState<string | null>(null);
-  const [mixerPresets, setMixerPresets] = useState<PresetItem[]>([]);
+  const [userMixerPresets, setUserMixerPresets] = useState<PresetItem[]>([]);
   const [activeMixerPresetId, setActiveMixerPresetId] = useState<string | null>(null);
   const [isAlbumMode, setIsAlbumMode] = useState(false);
 
@@ -270,28 +270,42 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setVolume('drums', drumSettings.volume);
   }, [setVolume, instrumentSettings, textureSettings, drumSettings, calibrationGains.master]);
 
+  // ───── MIXER PRESET LOGIC ─────
+
+  const factoryMixerPresets = useMemo((): PresetItem[] => {
+      return Object.entries(MIXER_SETTINGS.genreBalance).map(([g, mix]) => ({
+          id: `factory-${g}`,
+          name: `FACTORY: ${g.toUpperCase()}`,
+          values: {
+              master: MIXER_SETTINGS.samplerDefaults.master,
+              ...mix
+          },
+          genre: g,
+          isFactory: true
+      }));
+  }, []);
+
+  const mixerPresets = useMemo(() => {
+      return [...factoryMixerPresets, ...userMixerPresets];
+  }, [factoryMixerPresets, userMixerPresets]);
+
   const loadMixerPreset = useCallback((id: string) => {
-    const saved = localStorage.getItem(MIXER_PRESETS_KEY);
-    if (!saved) return;
-    try {
-        const list: PresetItem[] = JSON.parse(saved);
-        const target = list.find(p => p.id === id);
-        if (target && target.values) {
-            const v = target.values;
-            if (v.master !== undefined) handleVolumeChange('master', v.master);
-            if (v.bass !== undefined) handleVolumeChange('bass', v.bass);
-            if (v.melody !== undefined) handleVolumeChange('melody', v.melody);
-            if (v.accompaniment !== undefined) handleVolumeChange('accompaniment', v.accompaniment);
-            if (v.pianoAccompaniment !== undefined) handleVolumeChange('pianoAccompaniment', v.pianoAccompaniment);
-            if (v.harmony !== undefined) handleVolumeChange('harmony', v.harmony);
-            if (v.sparkles !== undefined) handleVolumeChange('sparkles', v.sparkles);
-            if (v.sfx !== undefined) handleVolumeChange('sfx', v.sfx);
-            if (v.drums !== undefined) handleVolumeChange('drums', v.drums);
-            setActiveMixerPresetId(id);
-            localStorage.setItem(ACTIVE_MIXER_ID_KEY, id);
-        }
-    } catch (e) {}
-  }, [handleVolumeChange]);
+    const target = mixerPresets.find(p => p.id === id);
+    if (target && target.values) {
+        const v = target.values;
+        if (v.master !== undefined) handleVolumeChange('master', v.master);
+        if (v.bass !== undefined) handleVolumeChange('bass', v.bass);
+        if (v.melody !== undefined) handleVolumeChange('melody', v.melody);
+        if (v.accompaniment !== undefined) handleVolumeChange('accompaniment', v.accompaniment);
+        if (v.pianoAccompaniment !== undefined) handleVolumeChange('pianoAccompaniment', v.pianoAccompaniment);
+        if (v.harmony !== undefined) handleVolumeChange('harmony', v.harmony);
+        if (v.sparkles !== undefined) handleVolumeChange('sparkles', v.sparkles);
+        if (v.sfx !== undefined) handleVolumeChange('sfx', v.sfx);
+        if (v.drums !== undefined) handleVolumeChange('drums', v.drums);
+        setActiveMixerPresetId(id);
+        localStorage.setItem(ACTIVE_MIXER_ID_KEY, id);
+    }
+  }, [mixerPresets, handleVolumeChange]);
 
   const saveMixerPreset = useCallback((name: string) => {
     const values = {
@@ -306,7 +320,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         drums: drumSettings.volume
     };
     const newPreset: PresetItem = { id: `mix-${Date.now()}`, name, values };
-    setMixerPresets(prev => {
+    setUserMixerPresets(prev => {
         const next = [newPreset, ...prev];
         localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(next));
         return next;
@@ -317,7 +331,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [instrumentSettings, textureSettings, drumSettings, calibrationGains.master, toast]);
 
   const updateActiveMixerPreset = useCallback(() => {
-    if (!activeMixerPresetId) return;
+    if (!activeMixerPresetId || activeMixerPresetId.startsWith('factory-')) return;
     const values = {
         master: calibrationGains.master,
         bass: instrumentSettings.bass.volume,
@@ -329,7 +343,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         sfx: textureSettings.sfx.volume,
         drums: drumSettings.volume
     };
-    setMixerPresets(prev => {
+    setUserMixerPresets(prev => {
         const next = prev.map(p => p.id === activeMixerPresetId ? { ...p, values } : p);
         localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(next));
         return next;
@@ -338,7 +352,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [activeMixerPresetId, instrumentSettings, textureSettings, drumSettings, calibrationGains.master, toast]);
 
   const deleteMixerPreset = useCallback((id: string) => {
-    setMixerPresets(prev => {
+    if (id.startsWith('factory-')) return;
+    setUserMixerPresets(prev => {
         const next = prev.filter(p => p.id !== id);
         localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(next));
         return next;
@@ -349,8 +364,16 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeMixerPresetId]);
 
+  const setMixerPresetGenre = useCallback((id: string, g: string) => {
+    if (id.startsWith('factory-')) return;
+    setUserMixerPresets(prev => {
+        const next = prev.map(p => p.id === id ? { ...p, genre: g || undefined } : p);
+        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+  }, []);
+
   const resetMixerToSystem = useCallback(() => {
-    // #ЗАЧЕМ: ПЛАН №4000. Сброс к централизованным настройкам из MIXER_SETTINGS.
     const mix = MIXER_SETTINGS.genreBalance[genre] ?? MIXER_SETTINGS.genreBalance.default;
     handleVolumeChange('master', MIXER_SETTINGS.samplerDefaults.master);
     Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
@@ -358,21 +381,18 @@ export const useAuraGroove = (): AuraGrooveProps => {
     localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
   }, [handleVolumeChange, genre]);
 
+  // ───── EQ PRESET LOGIC ─────
+
   const loadEqPreset = useCallback((id: string) => {
-    const saved = localStorage.getItem(EQ_PRESETS_KEY);
-    if (!saved) return;
-    try {
-        const list: PresetItem[] = JSON.parse(saved);
-        const target = list.find(p => p.id === id);
-        if (target && Array.isArray(target.values)) {
-            target.values.forEach((val: number, idx: number) => {
-                handleEqChange(idx, val);
-            });
-            setActiveEqPresetId(id);
-            localStorage.setItem(ACTIVE_EQ_ID_KEY, id);
-        }
-    } catch (e) {}
-  }, [handleEqChange]);
+    const target = eqPresets.find(p => p.id === id);
+    if (target && Array.isArray(target.values)) {
+        target.values.forEach((val: number, idx: number) => {
+            handleEqChange(idx, val);
+        });
+        setActiveEqPresetId(id);
+        localStorage.setItem(ACTIVE_EQ_ID_KEY, id);
+    }
+  }, [eqPresets, handleEqChange]);
 
   const saveEqPreset = useCallback((name: string) => {
     const newPreset: PresetItem = { id: `eq-${Date.now()}`, name, values: [...eqSettings] };
@@ -408,14 +428,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeEqPresetId]);
 
-  const setMixerPresetGenre = useCallback((id: string, g: string) => {
-    setMixerPresets(prev => {
-        const next = prev.map(p => p.id === id ? { ...p, genre: g || undefined } : p);
-        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(next));
-        return next;
-    });
-  }, []);
-
   const setEqPresetGenre = useCallback((id: string, genre: string) => {
     setEqPresets(prev => {
         const next = prev.map(p => p.id === id ? { ...p, genre: genre || undefined } : p);
@@ -425,43 +437,31 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, []);
 
   const applyGenreMix = useCallback((g: Genre) => {
-    let presets: PresetItem[] = [];
     let lastMap: Record<string, string> = {};
-    try { presets = JSON.parse(localStorage.getItem(MIXER_PRESETS_KEY) || '[]'); } catch (e) {}
     try { lastMap = JSON.parse(localStorage.getItem(LAST_MIX_BY_GENRE_KEY) || '{}'); } catch (e) {}
-    const chosen = presets.find(p => p.id === lastMap[g] && p.genre === g) || presets.find(p => p.genre === g);
-    if (chosen && chosen.values && !Array.isArray(chosen.values)) {
-        const v = chosen.values;
-        if (v.master !== undefined) handleVolumeChange('master', v.master);
-        if (v.bass !== undefined) handleVolumeChange('bass', v.bass);
-        if (v.melody !== undefined) handleVolumeChange('melody', v.melody);
-        if (v.accompaniment !== undefined) handleVolumeChange('accompaniment', v.accompaniment);
-        if (v.pianoAccompaniment !== undefined) handleVolumeChange('pianoAccompaniment', v.pianoAccompaniment);
-        if (v.harmony !== undefined) handleVolumeChange('harmony', v.harmony);
-        if (v.sparkles !== undefined) handleVolumeChange('sparkles', v.sparkles);
-        if (v.sfx !== undefined) handleVolumeChange('sfx', v.sfx);
-        if (v.drums !== undefined) handleVolumeChange('drums', v.drums);
-        setActiveMixerPresetId(chosen.id);
+    
+    // 1. Поиск пользовательского пресета для этого жанра
+    const userChoice = userMixerPresets.find(p => p.id === lastMap[g] && p.genre === g) || userMixerPresets.find(p => p.genre === g);
+    
+    if (userChoice) {
+        loadMixerPreset(userChoice.id);
     } else {
-        // #ЗАЧЕМ: ПЛАН №4000. Авто-балансировка фейдеров по жанру из MIXER_SETTINGS.
-        const mix = MIXER_SETTINGS.genreBalance[g] ?? MIXER_SETTINGS.genreBalance.default;
-        handleVolumeChange('master', MIXER_SETTINGS.samplerDefaults.master);
-        Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
-        setActiveMixerPresetId(null);
+        // 2. Фолбэк на заводской пресет
+        const factoryId = `factory-${g}`;
+        loadMixerPreset(factoryId);
     }
-  }, [handleVolumeChange]);
+  }, [userMixerPresets, loadMixerPreset]);
 
   const applyGenreEq = useCallback((g: Genre) => {
-    let presets: PresetItem[] = [];
     let lastMap: Record<string, string> = {};
-    try { presets = JSON.parse(localStorage.getItem(EQ_PRESETS_KEY) || '[]'); } catch (e) {}
     try { lastMap = JSON.parse(localStorage.getItem(LAST_EQ_BY_GENRE_KEY) || '{}'); } catch (e) {}
-    const chosen = presets.find(p => p.id === lastMap[g] && p.genre === g) || presets.find(p => p.genre === g);
+    const chosen = eqPresets.find(p => p.id === lastMap[g] && p.genre === g) || eqPresets.find(p => p.genre === g);
     if (chosen && Array.isArray(chosen.values)) {
-        chosen.values.forEach((val: number, idx: number) => handleEqChange(idx, val));
-        setActiveEqPresetId(chosen.id);
+        loadEqPreset(chosen.id);
     }
-  }, [handleEqChange]);
+  }, [eqPresets, loadEqPreset]);
+
+  // ───── INITIALIZATION ─────
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -479,34 +479,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
 
     const savedMixes = localStorage.getItem(MIXER_PRESETS_KEY);
-    let currentList: PresetItem[] = [];
     if (savedMixes) {
-        try { currentList = JSON.parse(savedMixes); } catch(e) {}
+        try { setUserMixerPresets(JSON.parse(savedMixes)); } catch(e) {}
     }
     
     const activeMixerId = localStorage.getItem(ACTIVE_MIXER_ID_KEY);
     if (activeMixerId) {
-        const list = JSON.parse(localStorage.getItem(MIXER_PRESETS_KEY) || '[]');
-        const target = list.find((p: any) => p.id === activeMixerId);
-        if (target && target.values) {
-            const v = target.values;
-            if (v.master !== undefined) setCalibrationGain('master', v.master);
-            setInstrumentSettings(prev => ({
-                ...prev,
-                bass: { ...prev.bass, volume: v.bass ?? prev.bass.volume },
-                melody: { ...prev.melody, volume: v.melody ?? prev.melody.volume },
-                accompaniment: { ...prev.accompaniment, volume: v.accompaniment ?? prev.accompaniment.volume },
-                pianoAccompaniment: { ...prev.pianoAccompaniment, volume: v.pianoAccompaniment ?? prev.pianoAccompaniment.volume },
-                harmony: { ...prev.harmony, volume: v.harmony ?? prev.harmony.volume },
-            }));
-            setDrumSettings(prev => ({ ...prev, volume: v.drums ?? prev.volume }));
-            setTextureSettings(prev => ({
-                ...prev,
-                sparkles: { ...prev.sparkles, volume: v.sparkles ?? prev.sparkles.volume },
-                sfx: { ...prev.sfx, volume: v.sfx ?? prev.sfx.volume },
-            }));
-            setActiveMixerPresetId(activeMixerId);
-        }
+        loadMixerPreset(activeMixerId);
     }
 
     const savedEqs = localStorage.getItem(EQ_PRESETS_KEY);
@@ -516,15 +495,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
             setEqPresets(list);
             const activeId = localStorage.getItem(ACTIVE_EQ_ID_KEY);
             if (activeId) {
-                const target = list.find(p => p.id === activeId);
-                if (target && Array.isArray(target.values)) {
-                    setEqSettings(target.values);
-                    setActiveEqPresetId(activeId);
-                }
+                loadEqPreset(activeId);
             }
         } catch(e) {}
     }
-  }, [setCalibrationGain]);
+  }, []);
 
   useEffect(() => {
     if (isInitialized) {
@@ -655,7 +630,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     return () => window.removeEventListener('AG_SUITE_TRANSITION', onTransition);
   }, [stopRecording, stopAllSounds, setIsPlaying, t, toast]);
 
-  const handlePlayPauseCallback = useCallback(async () => { 
+  const handlePlayPause = useCallback(async () => { 
     if (!isInitialized) {
         const success = await initialize();
         if (success) {
@@ -747,7 +722,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     availableCompositions,
     selectedCompositionIds: [], toggleCompositionFilter: () => {}, clearCompositionFilters: () => {}, 
     refreshCloudAxioms: async () => {}, syncDna: async () => {},
-    handlePlayPause: handlePlayPauseCallback,
+    handlePlayPause,
     handleRegenerate: () => { setCurrentSeed(Date.now()); setIsRegenerating(true); setTimeout(() => setIsRegenerating(false), 1000); },
     handleToggleRecording: () => {
         if (isRecording || isAlbumMode) {
@@ -819,7 +794,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     useMelodyV2, language, toggleLanguage, t
   }), [
       isInitializing, isPlaying, isRegenerating, isRecording, isAlbumMode, isBroadcastActive, availableCompositions, refreshCloudAxioms, engineSyncDna,
-      handlePlayPauseCallback, isRecording, stopRecording, startRecording, handleStartAlbumMode, toggleBroadcast, isInitialized, db, currentSeed, mood, genre, density, bpm, instrumentSettings,
+      handlePlayPause, isRecording, stopRecording, startRecording, handleStartAlbumMode, toggleBroadcast, isInitialized, db, currentSeed, mood, genre, density, bpm, instrumentSettings,
       setInstrument, handleVolumeChange, textureSettings, score, setScore, composerControlsInstruments, 
       setComposerControlsInstruments, useHeritage, setUseHeritage, setIsPlaying, stopAllSounds, handleGoHome, eqSettings, handleEqChange,
       calibrationGains, setCalibrationGain, timerSettings, introBars, voiceLimit, setVoiceLimit, route, activeRouteIndex, isRepeat,

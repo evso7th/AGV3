@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V17.3.0 — "Version Bump 1.0.4".
- * #ЗАЧЕМ: ПЛАН №1.0.4. Обновление версии до 1.0.4.
+ * @fileOverview UI AuraGroove V17.4.0 — "Mixer Automation Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №4001. Визуализация системных пресетов микшера.
  */
 'use client';
 
@@ -140,7 +140,7 @@ function PresetManager({
                         <Save className="h-3.5 w-3.5" />
                         {t('btn_preset_save')}
                     </Button>
-                    {activeId && onUpdate && (
+                    {activeId && onUpdate && !activeId.startsWith('factory-') && (
                         <Button
                             size="sm"
                             variant="secondary"
@@ -161,9 +161,12 @@ function PresetManager({
                             "flex items-center justify-between p-1.5 rounded border transition-all group",
                             p.id === activeId ? "bg-primary/10 border-primary/30" : "border-transparent hover:bg-muted/50"
                         )}>
-                            <span className="text-[10px] font-bold uppercase cursor-pointer flex-grow truncate min-w-0 mr-2" onClick={() => onLoad(p.id)}>{p.name}</span>
+                            <div className="flex items-center gap-2 flex-grow truncate min-w-0 mr-2" onClick={() => onLoad(p.id)}>
+                                {p.isFactory && <Badge variant="outline" className="text-[7px] font-black uppercase px-1 h-3.5 border-primary/20 text-primary">SYSTEM</Badge>}
+                                <span className="text-[10px] font-bold uppercase cursor-pointer truncate">{p.name}</span>
+                            </div>
                             
-                            {onSetGenre && (
+                            {onSetGenre && !p.isFactory && (
                                 <Select 
                                     value={p.genre || "none"} 
                                     onValueChange={(v) => onSetGenre(p.id, v === "none" ? "" : v)}
@@ -179,8 +182,16 @@ function PresetManager({
                                     </SelectContent>
                                 </Select>
                             )}
+                            
+                            {p.isFactory && p.genre && (
+                                <Badge variant="outline" className="text-[8px] font-black uppercase px-1.5 h-4.5 opacity-40">
+                                    {t(`short_g_${p.genre}` as any)}
+                                </Badge>
+                            )}
 
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 shrink-0" onClick={() => onDelete(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                            {!p.isFactory && (
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 shrink-0" onClick={() => onDelete(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                            )}
                         </div>
                     ))}
                 </div>
@@ -517,7 +528,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <button 
                             onClick={(e) => {
                                 e.stopPropagation();
-                                setOptimisticIsPlaying(!optimisticIsPlaying);
                                 props.handlePlayPause();
                             }}
                             className="p-2 hover:bg-white/5 transition-all active:scale-90"
