@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V88.0 — "Centralized Mixer".
- * #ЗАЧЕМ: Реализация ПЛАНА №4000. Удаление локальных констант в пользу MIXER_SETTINGS.
+ * @fileOverview Audio Engine Context V88.1 — "Polyphony Sync Fix".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3505. Восстановление связи между UI и движком для лимита голосов.
  */
 'use client';
 
@@ -108,14 +108,27 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [voiceLimit, setVoiceLimitState] = useState<number>(128);
 
   const voiceLimitRef = useRef(voiceLimit);
+  
+  // #ЗАЧЕМ: ПЛАН №3505. Загрузка лимита голосов из памяти при старте.
   useEffect(() => {
-    voiceLimitRef.current = voiceLimit;
-  }, [voiceLimit]);
+    if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('AuraGroove_VoiceLimit');
+        if (saved) {
+            const val = parseInt(saved);
+            if (!isNaN(val)) {
+                setVoiceLimitState(val);
+                setGlobalVoiceLimit(val);
+                voiceLimitRef.current = val;
+            }
+        }
+    }
+  }, []);
 
   const setVoiceLimit = useCallback((limit: number) => {
     setVoiceLimitState(limit);
     localStorage.setItem('AuraGroove_VoiceLimit', limit.toString());
     setGlobalVoiceLimit(limit);
+    voiceLimitRef.current = limit;
   }, []);
 
   const setDnaSourcePreference = useCallback((pref: 'cache' | 'network') => {
@@ -326,8 +339,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         return;
     }
     
-    // GAIN STAGING FIX: No multiplication by VOICE_BALANCE here.
-    // The balance is handled inside the instrument factory (per-voice).
     const now = audioContextRef.current?.currentTime || 0;
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {

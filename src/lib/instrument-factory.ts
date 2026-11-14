@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V18.0 — "Memory Integrity".
- * #ЗАЧЕМ: Реализация ПЛАНА №3502. Внедрение AudioParam Unlink для предотвращения утечек в AudioGraph.
+ * @fileOverview Центральная фабрика инструментов V18.1 — "Reactive Voice Management".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3505. Включение реактивного контроля лимита голосов при создании каждой ноты.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -249,6 +249,9 @@ const createIndependentVoice = (
     role: string | null = null,
     extras?: { rand?: () => number; vibBus?: AudioNode; lfoBus?: AudioNode } 
 ) => {
+    // #ЗАЧЕМ: Реактивное ограничение полифонии. Проверяем лимит ДО создания нового голоса.
+    enforceVoiceLimit();
+
     const f0 = midiToHz(midi);
     const adsr = getADSR(preset, eventParams);
     const now = Math.max(when, ctx.currentTime);
