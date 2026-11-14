@@ -2,8 +2,8 @@ import type { FractalEvent, InstrumentType } from "@/types/fractal";
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Drum Machine V7.3 — "Percussion Attenuation".
- * #ЗАЧЕМ: ПЛАН №3170. Снижение громкости перкуссии (perc-) в 2.5 раза.
+ * @fileOverview Drum Machine V7.4 — "Drum Power Boost".
+ * #ЗАЧЕМ: ПЛАН №3200. Системное увеличение громкости ударных в 2 раза (преамп 1.9).
  */
 
 const DRUM_SAMPLES: Record<string, string> = {
@@ -156,7 +156,8 @@ export class DrumMachine {
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.95;
+        // #ЗАЧЕМ: Увеличение системной громкости ударных в 2 раза (было 0.95).
+        this.preamp.gain.value = 1.9;
         this.preamp.connect(destination);
     }
 
