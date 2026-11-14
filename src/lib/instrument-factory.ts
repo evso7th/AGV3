@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V18.1 — "Reactive Voice Management".
- * #ЗАЧЕМ: Реализация ПЛАНА №3505. Включение реактивного контроля лимита голосов при создании каждой ноты.
+ * @fileOverview Центральная фабрика инструментов V18.2 — "Absolute Integrity".
+ * #ЗАЧЕМ: Ликвидация утечек памяти через принудительный Unlink AudioParams и контроль LFO.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -41,13 +41,20 @@ const normalizeRole = (r?: string | null) => (r ? (ROLE_ALIASES[r] ?? r) : null)
 const STEAL_FADE_SEC = 0.015;
 const fadingVoices = new Set<any>();
 
+/**
+ * #ЗАЧЕМ: Тотальная очистка голоса. 
+ * Разрывает не только выходы, но и ВХОДЫ к параметрам (LFO Unlink).
+ */
 const hardKill = (v: any) => {
   if (!v) return;
   
-  // 1. Разрываем AudioParam связи (ЗАЩИТА ОТ УТЕЧЕК)
+  // 1. Разрываем AudioParam связи (КРИТИЧНО ДЛЯ ГЕРМЕТИЧНОСТИ)
   if (v.paramLinks) {
     v.paramLinks.forEach((link: any) => {
-      try { link.src.disconnect(link.param); } catch (e) {}
+      try { 
+        // Disconnect specific source from specific parameter
+        link.src.disconnect(link.param); 
+      } catch (e) {}
     });
   }
 
@@ -55,14 +62,21 @@ const hardKill = (v: any) => {
   if (v.nodes) {
     v.nodes.forEach((n: any) => {
       try {
-        if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) { n.onended = null; n.stop(); }
+        if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) { 
+          n.onended = null; 
+          n.stop(); 
+        }
         n.disconnect();
       } catch (e) {}
     });
   }
   
-  v.nodes = null; v.paramLinks = null; v.voiceState = null; v.instrumentId = null;
-  fadingVoices.delete(v); globalActiveVoices.delete(v);
+  v.nodes = null; 
+  v.paramLinks = null; 
+  v.voiceState = null; 
+  v.instrumentId = null;
+  fadingVoices.delete(v); 
+  globalActiveVoices.delete(v);
 };
 
 const STEAL_PRIORITY: Record<string, number> = {
@@ -82,31 +96,55 @@ export const globalAllNotesOff = () => {
 export const deepCleanup = (voiceRecord: any, immediate = false) => {
   if (!voiceRecord || voiceRecord.disposed) return;
   voiceRecord.disposed = true;
+  
+  // Квота освобождается СРАЗУ, чтобы не блокировать новые ноты во время фейда
   globalActiveVoices.delete(voiceRecord);
+  
   const gain: GainNode | null = voiceRecord.voiceState?.node ?? null;
   const ctx: AudioContext | null = voiceRecord.ctx ?? null;
-  if (immediate || !gain || !ctx) { hardKill(voiceRecord); return; }
+  
+  if (immediate || !gain || !ctx) { 
+    hardKill(voiceRecord); 
+    return; 
+  }
+  
   const t = ctx.currentTime;
   const stopAt = t + STEAL_FADE_SEC;
+  
   try {
     const g = gain.gain, cur = g.value;
     g.cancelScheduledValues(t);
     g.setValueAtTime(cur, t);
     g.linearRampToValueAtTime(0, stopAt);
-  } catch (e) { hardKill(voiceRecord); return; }
+  } catch (e) { 
+    hardKill(voiceRecord); 
+    return; 
+  }
+  
   voiceRecord.nodes?.forEach((n: any) => {
     try {
-      if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) { n.onended = null; n.stop(stopAt + 0.005); }
+      if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) { 
+        n.onended = null; 
+        n.stop(stopAt + 0.005); 
+      }
     } catch (e) {}
   });
+  
   voiceRecord.hardStopTime = stopAt + 0.02;
   fadingVoices.add(voiceRecord);
 };
 
 export const collectExpiredVoices = (audioCtxTime: number) => {
-  for (const v of fadingVoices) if (v.hardStopTime <= audioCtxTime) hardKill(v);
+  // 1. Очистка затухающих (stolen) голосов
+  for (const v of fadingVoices) {
+    if (v.hardStopTime <= audioCtxTime) hardKill(v);
+  }
+  
+  // 2. Очистка естественно завершившихся или помеченных к удалению
   for (const voice of globalActiveVoices) {
-    if (voice.expirationTime < audioCtxTime || voice.disposed) deepCleanup(voice, true);
+    if (voice.expirationTime < audioCtxTime || voice.disposed) {
+      deepCleanup(voice, true);
+    }
   }
 };
 
@@ -114,12 +152,14 @@ export const enforceVoiceLimit = () => {
     if (globalActiveVoices.size <= globalVoiceLimit) return;
     const toKillCount = globalActiveVoices.size - globalVoiceLimit;
     const allVoices = Array.from(globalActiveVoices).filter(v => !v.disposed);
+    
     allVoices.sort((a, b) => {
         const prioA = STEAL_PRIORITY[a.role ?? a.type] ?? 1;
         const prioB = STEAL_PRIORITY[b.role ?? b.type] ?? 1;
         if (prioA !== prioB) return prioA - prioB;
         return a.voiceState.startTime - b.voiceState.startTime;
     });
+    
     const targets = allVoices.slice(0, toKillCount);
     targets.forEach(v => deepCleanup(v));
 };
@@ -249,7 +289,7 @@ const createIndependentVoice = (
     role: string | null = null,
     extras?: { rand?: () => number; vibBus?: AudioNode; lfoBus?: AudioNode } 
 ) => {
-    // #ЗАЧЕМ: Реактивное ограничение полифонии. Проверяем лимит ДО создания нового голоса.
+    // 1. РЕАКТИВНЫЙ КОНТРОЛЬ ПОЛИФОНИИ (ПЛАН №3505)
     enforceVoiceLimit();
 
     const f0 = midiToHz(midi);

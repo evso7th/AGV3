@@ -8,8 +8,8 @@ import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 import { VIOLIN_SAMPLES } from "@/lib/samples";
 
 /**
- * @fileOverview Менеджер слоя гармонии V6.2 — "Unified Preamp Calibration".
- * #ЗАЧЕМ: Добавлен метод setPreampGains для правильной калибровки всех инструментов слоя.
+ * @fileOverview Менеджер слоя гармонии V6.3 — "Leak Protection".
+ * #ЗАЧЕМ: Ликвидация утечек через AbortController и очистку замыканий.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -53,7 +53,6 @@ export class HarmonySynthManager {
         }
     }
     
-    /** #ЗАЧЕМ: Унифицированная калибровка слоя гармонии. */
     public setPreampGains(orchestralGain: number, chordsGain: number) {
         this.violin.setPreampGain(orchestralGain);
         this.guitarChords.setPreampGain(chordsGain);
@@ -77,7 +76,7 @@ export class HarmonySynthManager {
             }
         }, delayMs);
 
-        signal.addEventListener('abort', () => clearTimeout(timeoutId));
+        signal.addEventListener('abort', () => clearTimeout(timeoutId), { once: true });
     }
 
     private async loadSynth(presetName: string) {
