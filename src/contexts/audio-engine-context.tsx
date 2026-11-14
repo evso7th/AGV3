@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Audio Engine Context V87.8 — "Accompaniment Power Boost".
- * #ЗАЧЕМ: Увеличение системной громкости аккомпанемента в 2 раза (преамп 0.4).
+ * @fileOverview Audio Engine Context V87.9 — "Accompaniment Power Boost Final".
+ * #ЗАЧЕМ: Увеличение системной громкости аккомпанемента (преамп 0.75).
  */
 'use client';
 
@@ -34,7 +34,7 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 0.85,
     acoustic: 0.15, 
     electric: 0.15, 
-    piano: 0.4, // #ЗАЧЕМ: ПЛАН №4.3. Увеличено с 0.2 до 0.4 для удвоения громкости KEYB.
+    piano: 0.75, // #ЗАЧЕМ: ПЛАН №4.4. Увеличено до 0.75 для максимальной плотности аккомпанемента.
     orchecial: 0.5, 
     chords: 1.2,
     bass: 1.0,
@@ -345,20 +345,18 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         return;
     }
     
-    // #ЗАЧЕМ: Применение VOICE_BALANCE для каждой роли.
-    const balance = VOICE_BALANCE[part] ?? 1.0;
-    const balancedVolume = volume * balance;
-    
+    // GAIN STAGING INTEGRITY FIX: Removed VOICE_BALANCE multiplication here.
+    // The balance is handled inside the instrument factory (per-voice).
     const now = audioContextRef.current?.currentTime || 0;
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
         gainNode.gain.cancelScheduledValues(now);
-        gainNode.gain.setTargetAtTime(balancedVolume, now, 0.015);
+        gainNode.gain.setTargetAtTime(volume, now, 0.015);
     }
 
     if (part === 'drums' && foundryDrumsGainNodeRef.current && audioContextRef.current) {
         foundryDrumsGainNodeRef.current.gain.cancelScheduledValues(now);
-        foundryDrumsGainNodeRef.current.gain.setTargetAtTime(balancedVolume * 0.57, now, 0.015);
+        foundryDrumsGainNodeRef.current.gain.setTargetAtTime(volume * 0.57, now, 0.015);
     }
   }, [setCalibrationGain]);
 
