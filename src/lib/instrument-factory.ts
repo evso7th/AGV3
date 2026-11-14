@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V17.7 — "Centralized Balance".
- * #ЗАЧЕМ: Реализация ПЛАНА №4000. Чтение баланса ролей из mixer-settings.ts.
+ * @fileOverview Центральная фабрика инструментов V18.0 — "Memory Integrity".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3502. Внедрение AudioParam Unlink для предотвращения утечек в AudioGraph.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -10,6 +10,7 @@ import { MIXER_SETTINGS } from './mixer-settings';
 const ENABLE_ROLE_BALANCE = true;
 const ENABLE_NON_BASS_REVERB = false;
 const ENABLE_RELEASE_CAP = true;
+const ENABLE_FILTER_LFO = true;
 
 // ───── DETERMINISM HELPERS ─────
 const mulberry32 = (a: number) => () => {
@@ -42,6 +43,15 @@ const fadingVoices = new Set<any>();
 
 const hardKill = (v: any) => {
   if (!v) return;
+  
+  // 1. Разрываем AudioParam связи (ЗАЩИТА ОТ УТЕЧЕК)
+  if (v.paramLinks) {
+    v.paramLinks.forEach((link: any) => {
+      try { link.src.disconnect(link.param); } catch (e) {}
+    });
+  }
+
+  // 2. Остановка и отключение узлов
   if (v.nodes) {
     v.nodes.forEach((n: any) => {
       try {
@@ -50,7 +60,8 @@ const hardKill = (v: any) => {
       } catch (e) {}
     });
   }
-  v.nodes = null; v.voiceState = null; v.instrumentId = null;
+  
+  v.nodes = null; v.paramLinks = null; v.voiceState = null; v.instrumentId = null;
   fadingVoices.delete(v); globalActiveVoices.delete(v);
 };
 
@@ -236,7 +247,7 @@ const createIndependentVoice = (
     eventParams: any = null,
     tempo: number = 72,
     role: string | null = null,
-    extras?: { rand?: () => number } 
+    extras?: { rand?: () => number; vibBus?: AudioNode; lfoBus?: AudioNode } 
 ) => {
     const f0 = midiToHz(midi);
     const adsr = getADSR(preset, eventParams);
@@ -254,6 +265,7 @@ const createIndependentVoice = (
 
     const voiceGain = ctx.createGain();
     const nodes: AudioNode[] = [voiceGain];
+    const paramLinks: { src: AudioNode; param: AudioParam }[] = [];
 
     const MIN_EVENT = 0.002;
     const dur = Math.max(duration, 0.02);
@@ -268,10 +280,11 @@ const createIndependentVoice = (
     const releaseTau = Math.max(releaseTime / 3, 0.02);
     const expirationTime = releaseStart + releaseTau * 5 + 0.03;
 
-    // #ЗАЧЕМ: Применяем централизованный баланс ролей.
     const balanceKey = (ENABLE_ROLE_BALANCE ? (normalizeRole(role) ?? type) : type);
     const roleMult = (MIXER_SETTINGS.roleBalance as any)[balanceKey] ?? 1.0;
     const level = clamp(peak * roleMult, 0, 1.5);
+
+    const oscs: OscillatorNode[] = [];
 
     if (type === 'guitar') {
         const osc = ctx.createOscillator();
@@ -282,6 +295,7 @@ const createIndependentVoice = (
         osc.start(now);
         osc.stop(expirationTime);
         nodes.push(osc);
+        oscs.push(osc);
     } else if (type === 'organ') {
         const osc = ctx.createOscillator();
         osc.setPeriodicWave(getOrganWave(ctx, preset.drawbars || [8,0,8,0,0,0,0,0,0]));
@@ -291,6 +305,7 @@ const createIndependentVoice = (
         osc.start(now);
         osc.stop(expirationTime);
         nodes.push(osc);
+        oscs.push(osc);
     } else {
         const oscConfigs = preset.osc || [{ type: 'sawtooth', gain: 0.5 }];
         oscConfigs.forEach((o: any) => {
@@ -305,6 +320,7 @@ const createIndependentVoice = (
             osc.start(now);
             osc.stop(expirationTime);
             nodes.push(osc, g);
+            oscs.push(osc);
         });
 
         if (type === 'bass' && preset.sub?.on) {
@@ -320,8 +336,22 @@ const createIndependentVoice = (
                 subOsc.start(now);
                 subOsc.stop(expirationTime);
                 nodes.push(subOsc, sg);
+                oscs.push(subOsc);
             }
         }
+    }
+
+    // VIBRATO CONNECTION
+    if (extras?.vibBus && preset.vibrato) {
+        const vg = ctx.createGain();
+        vg.gain.setValueAtTime(0, now);
+        vg.gain.linearRampToValueAtTime(preset.vibrato.depthCents ?? 0, now + (preset.vibrato.delay ?? 0.3));
+        extras.vibBus.connect(vg);
+        oscs.forEach(o => {
+            vg.connect(o.detune);
+            paramLinks.push({ src: vg, param: o.detune });
+        });
+        nodes.push(vg);
     }
 
     let chainHead: AudioNode = voiceGain;
@@ -360,6 +390,12 @@ const createIndependentVoice = (
         filter.frequency.value = finalCutoff;
     }
 
+    // FILTER LFO CONNECTION
+    if (extras?.lfoBus) {
+        extras.lfoBus.connect(filter.frequency);
+        paramLinks.push({ src: extras.lfoBus, param: filter.frequency });
+    }
+
     chainHead.connect(filter);
     chainHead = filter;
     nodes.push(filter);
@@ -389,7 +425,7 @@ const createIndependentVoice = (
     voiceGain.gain.setTargetAtTime(level * adsr.s, now + attackTime, decayTau);
     voiceGain.gain.setTargetAtTime(0.0001, releaseStart, releaseTau);
 
-    const record = { nodes, voiceState: { node: voiceGain, startTime: now }, disposed: false,
+    const record = { nodes, paramLinks, voiceState: { node: voiceGain, startTime: now }, disposed: false,
                      type, role: balanceKey, instrumentId, expirationTime, ctx };
     globalActiveVoices.add(record);
     return record; 
@@ -506,6 +542,34 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     };
     applyReverb(currentPreset);
 
+    // LFO / VIBRATO MANAGEMENT
+    let vibLfo: OscillatorNode | null = null, vibBus: GainNode | null = null;
+    let lfoOsc: OscillatorNode | null = null, lfoBus: GainNode | null = null;
+
+    const ensureVibrato = (p: any): GainNode | null => {
+        if (!p?.vibrato || (p.vibrato.depthCents ?? 0) <= 0) return null;
+        if (!vibLfo) {
+            vibLfo = ctx.createOscillator(); vibLfo.type = 'sine';
+            vibBus = ctx.createGain(); vibBus.gain.value = 1;
+            vibLfo.connect(vibBus); vibLfo.start(0);
+        }
+        vibLfo.frequency.setTargetAtTime(p.vibrato.rate ?? 5, ctx.currentTime, 0.05);
+        return vibBus;
+    };
+
+    const ensureLfo = (p: any): GainNode | null => {
+        const l = p?.lfo;
+        if (!ENABLE_FILTER_LFO || !l || !(l.amount > 0) || l.target !== 'filter') return null;
+        if (!lfoOsc) {
+            lfoOsc = ctx.createOscillator(); lfoOsc.type = l.shape ?? 'sine';
+            lfoBus = ctx.createGain(); lfoOsc.connect(lfoBus);
+            lfoOsc.start(0);
+        }
+        lfoOsc.frequency.setTargetAtTime(l.rate ?? 0.4, ctx.currentTime, 0.05);
+        lfoBus.gain.setTargetAtTime(l.amount, ctx.currentTime, 0.05);
+        return lfoBus;
+    };
+
     let head: AudioNode = instrumentGain;
     if (comp) { head.connect(comp); head = comp; }
     if (makeup) { head.connect(makeup); head = makeup; }
@@ -552,7 +616,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             const rand = mulberry32(noteSeed);
             createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration,
               instrumentId, sharedDelay, params, params?.tempo || 72,
-              normalizeRole(params?.role ?? role ?? null), { rand });
+              normalizeRole(params?.role ?? role ?? null), 
+              { rand, vibBus: ensureVibrato(currentPreset), lfoBus: ensureLfo(currentPreset) });
         },
         allNotesOff: () => killOwn(false),
         setPreset: (p) => {
@@ -570,13 +635,14 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         dispose: () => {
             destroyed = true;
             killOwn(true);
+            [vibLfo, lfoOsc].forEach(osc => { try { osc?.stop(); } catch(e) {} });
             [instrumentGain, hpf, mudCut, panner, sharedDelay, feedback, delayMix,
-             comp, makeup, convolver, reverbWet, ...eqNodes].forEach(n => n?.disconnect());
+             comp, makeup, convolver, reverbWet, ...eqNodes, vibBus, lfoBus, vibLfo, lfoOsc].forEach(n => n?.disconnect());
             currentOut = null as any;
         },
         disconnect: () => { 
             [instrumentGain, hpf, mudCut, panner, sharedDelay, feedback, delayMix,
-             comp, makeup, convolver, reverbWet, ...eqNodes].forEach(n => n?.disconnect()); 
+             comp, makeup, convolver, reverbWet, ...eqNodes, vibBus, lfoBus].forEach(n => n?.disconnect()); 
         },
         connect: (dest) => routeTo(dest || output)
     };
