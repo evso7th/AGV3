@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Audio Engine Context V87.9 — "Accompaniment Power Boost Final".
- * #ЗАЧЕМ: Увеличение системной громкости аккомпанемента (преамп 0.75).
+ * @fileOverview Audio Engine Context V88.0 — "Centralized Mixer".
+ * #ЗАЧЕМ: Реализация ПЛАНА №4000. Удаление локальных констант в пользу MIXER_SETTINGS.
  */
 'use client';
 
@@ -29,28 +28,7 @@ import { useFirestore, useAuth } from '@/firebase/provider';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
-
-const SAMPLER_DEFAULTS: Record<string, number> = {
-    master: 0.85,
-    acoustic: 0.15, 
-    electric: 0.15, 
-    piano: 0.75, // #ЗАЧЕМ: ПЛАН №4.4. Увеличено до 0.75 для максимальной плотности аккомпанемента.
-    orchecial: 0.5, 
-    chords: 1.2,
-    bass: 1.0,
-    cs80: 0.4
-};
-
-const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.75,
-  melody: 1.50,
-  accompaniment: 1.50,
-  drums: 0.50,
-  sparkles: 0.80,
-  sfx: 0.40,
-  harmony: 0.60,
-  pianoAccompaniment: 0.50,
-};
+import { MIXER_SETTINGS } from '@/lib/mixer-settings';
 
 interface AudioEngineContextType {
   isInitialized: boolean;
@@ -85,12 +63,6 @@ interface AudioEngineContextType {
   voiceLimit: number;
   setVoiceLimit: (limit: number) => void;
   startMasterFadeOut: (durationInSeconds: number) => void;
-  calculateMasterFade: (target: number, duration: number) => void;
-  calculateMasterFadeOut: (target: number, duration: number) => void;
-  calculateMasterFadeOutFixed: (target: number, duration: number) => void;
-  calculateMasterFadeOutAdaptive: (target: number, duration: number) => void;
-  calculateMasterFadeOutFixed2: (target: number, duration: number) => void;
-  calculateMasterFadeOutFixed3: (target: number, duration: number) => void;
   cancelMasterFadeOut: () => void;
   startRecording: (prefix?: string) => void;
   stopRecording: () => void;
@@ -177,7 +149,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
   const pianoAccompanimentManagerRef = useRef<PianoAccompanimentManager | null>(null);
   const sparklePlayerRef = useRef<SparklePlayer | null>(null);
-  const sparklePreampRef = useRef<GainNode | null>(null);
   const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
   const blackGuitarSamplerRef = useRef<BlackGuitarSampler | null>(null);
   const telecasterSamplerRef = useRef<TelecasterGuitarSampler | null>(null);
@@ -195,7 +166,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const loopingRef = useRef(false);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
-  const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>({ master: 0.85, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, chords: 1.0, bass: 1.0, cs80: 1.0 });
+  const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>({ 
+      master: MIXER_SETTINGS.samplerDefaults.master, 
+      acoustic: MIXER_SETTINGS.samplerDefaults.acoustic, 
+      electric: MIXER_SETTINGS.samplerDefaults.electric, 
+      piano: MIXER_SETTINGS.samplerDefaults.piano, 
+      orchestral: MIXER_SETTINGS.samplerDefaults.orchestral, 
+      chords: MIXER_SETTINGS.samplerDefaults.chords, 
+      bass: MIXER_SETTINGS.samplerDefaults.bass, 
+      cs80: MIXER_SETTINGS.samplerDefaults.cs80 
+  });
 
   const calibrationGainsRef = useRef(calibrationGains);
   useEffect(() => {
@@ -230,32 +210,33 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const applyCalibration = useCallback((gains: Record<string, number>) => {
       if (!audioContextRef.current) return;
       const now = audioContextRef.current.currentTime;
-      const m = gains.master ?? 0.85;
+      const m = gains.master ?? MIXER_SETTINGS.samplerDefaults.master;
       
       if (masterGainNodeRef.current) {
           masterGainNodeRef.current.gain.cancelScheduledValues(now);
           masterGainNodeRef.current.gain.setTargetAtTime(m, now, 0.05);
       }
       
-      const electricBase = gains.electric || 1.0;
-      const acousticBase = gains.acoustic || 1.0;
-      const pianoBase = gains.piano || 1.0;
-      const bassBase = gains.bass || 1.0;
+      const defaults = MIXER_SETTINGS.samplerDefaults;
+      const electricBase = gains.electric || defaults.electric;
+      const acousticBase = gains.acoustic || defaults.acoustic;
+      const pianoBase = gains.piano || defaults.piano;
+      const bassBase = gains.bass || defaults.bass;
 
-      blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * acousticBase);
-      telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * electricBase);
+      blackGuitarSamplerRef.current?.setPreampGain(acousticBase);
+      telecasterSamplerRef.current?.setPreampGain(electricBase);
       darkTelecasterSamplerRef.current?.setPreampGain(2.2 * electricBase); 
-      iCs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * (gains.cs80 || 1.0));
+      iCs80SamplerRef.current?.setPreampGain(defaults.cs80 * (gains.cs80 || defaults.cs80));
       
-      melodyManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.electric * electricBase); 
-      accompanimentManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.piano * pianoBase);
-      bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * bassBase);
+      melodyManagerV2Ref.current?.setPreampGain(electricBase); 
+      accompanimentManagerV2Ref.current?.setPreampGain(pianoBase);
+      bassManagerV2Ref.current?.setPreampGain(bassBase);
       
       pianoAccompanimentManagerRef.current?.setVolume(pianoBase); 
       
       harmonyManagerRef.current?.setPreampGains(
-          SAMPLER_DEFAULTS.orchecial * (gains.orchestral || 1.0),
-          SAMPLER_DEFAULTS.chords * (gains.chords || 1.0)
+          defaults.orchestral * (gains.orchestral || defaults.orchestral),
+          defaults.chords * (gains.chords || defaults.chords)
       );
   }, []);
 
@@ -345,7 +326,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         return;
     }
     
-    // GAIN STAGING INTEGRITY FIX: Removed VOICE_BALANCE multiplication here.
+    // GAIN STAGING FIX: No multiplication by VOICE_BALANCE here.
     // The balance is handled inside the instrument factory (per-voice).
     const now = audioContextRef.current?.currentTime || 0;
     const gainNode = gainNodesRef.current[part];

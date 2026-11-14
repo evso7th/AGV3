@@ -1,18 +1,17 @@
 /**
- * @fileOverview Центральная фабрика инструментов V17.6 — "Gain Staging Integrity".
- * #ЗАЧЕМ: Применены все аудиты 3501, 3502. Устранена проблема двойного гейна.
- * #ЧТО:  1. Применены все патчи техдолга (D1-D9).
- *        2. Убрано дублирующее применение VOICE_BALANCE, перенесено в audio-engine.
+ * @fileOverview Центральная фабрика инструментов V17.7 — "Centralized Balance".
+ * #ЗАЧЕМ: Реализация ПЛАНА №4000. Чтение баланса ролей из mixer-settings.ts.
  */
 
 import { dbToGain } from './guitar-loudness';
+import { MIXER_SETTINGS } from './mixer-settings';
 
 // ───── AUDIT PATCH FLAGS ─────
 const ENABLE_ROLE_BALANCE = true;
 const ENABLE_NON_BASS_REVERB = false;
 const ENABLE_RELEASE_CAP = true;
 
-// ───── DETERMINISM HELPERS (D5) ─────
+// ───── DETERMINISM HELPERS ─────
 const mulberry32 = (a: number) => () => {
   a |= 0; a = (a + 0x6D2B79F5) | 0;
   let t = Math.imul(a ^ (a >>> 15), 1 | a);
@@ -31,13 +30,13 @@ let instrumentCounter = 0;
 export let globalActiveVoices = new Set<any>();
 let globalVoiceLimit = 128;
 
-// ROLE HELPERS (B3)
+// ROLE HELPERS
 const ROLE_ALIASES: Record<string, string> = {
   sparkle: 'sparkles', rhodes: 'pianoAccompaniment', piano: 'pianoAccompaniment'
 };
 const normalizeRole = (r?: string | null) => (r ? (ROLE_ALIASES[r] ?? r) : null);
 
-// FADE-OUT HELPERS (B4)
+// FADE-OUT HELPERS
 const STEAL_FADE_SEC = 0.015;
 const fadingVoices = new Set<any>();
 
@@ -59,13 +58,6 @@ const STEAL_PRIORITY: Record<string, number> = {
     'sparkle': 0, 'sfx': 0, 'melody': 1, 'drums': 1, 'accompaniment': 2,
     'harmony': 2, 'bass': 3, 'pianoAccompaniment': 4
 };
-
-// NOTE: This is now applied in audio-engine-context, not here, to prevent double-amping.
-/*
-const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.75, melody: 1.50, accompaniment: 1.50, drums: 0.50,
-  sparkles: 0.80, sfx: 0.40, harmony: 0.60, pianoAccompaniment: 0.50,
-};*/
 
 export const setGlobalVoiceLimit = (limit: number) => {
     if (isFinite(limit) && limit > 0) globalVoiceLimit = limit;
@@ -126,8 +118,7 @@ export const enforceVoiceLimit = () => {
 const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
-// D9: Removed dead code `if (type === 'bass')`
-const getADSR = (p: any, params?: any, type?: string) => {
+const getADSR = (p: any, params?: any) => {
     const a = p.adsr || p;
     let rawA = isFinite(params?.attack) ? params.attack : (isFinite(a.a) ? a.a : (isFinite(a.attack) ? a.attack : 0.01));
     let rawD = isFinite(params?.decay) ? params.decay : (isFinite(a.d) ? a.d : (isFinite(a.decay) ? a.decay : 0.1));
@@ -185,14 +176,13 @@ const getDriveCurve = (type: string, amount: number): Float32Array => {
   return c;
 };
 
-
 const noiseCache = new WeakMap<AudioContext, AudioBuffer>();
 const getNoiseBuffer = (ctx: AudioContext): AudioBuffer => {
     const cached = noiseCache.get(ctx); if (cached) return cached;
     const len = Math.floor(ctx.sampleRate * 0.5);
     const buf = ctx.createBuffer(1, len, ctx.sampleRate);
     const d = buf.getChannelData(0);
-    const rand = mulberry32(TEXTURE_SEED); // D5: Use seeded PRNG
+    const rand = mulberry32(TEXTURE_SEED); 
     for (let i = 0; i < len; i++) d[i] = rand() * 2 - 1;
     noiseCache.set(ctx, buf); return buf;
 };
@@ -204,7 +194,7 @@ const getReverbIR = (ctx: AudioContext): AudioBuffer => {
     const buf = ctx.createBuffer(2, len, ctx.sampleRate);
     for (let ch = 0; ch < 2; ch++) {
         const d = buf.getChannelData(ch);
-        const rand = mulberry32(TEXTURE_SEED + ch); // D5: Use seeded PRNG
+        const rand = mulberry32(TEXTURE_SEED + ch); 
         for (let i = 0; i < len; i++) {
             const t = i / len;
             d[i] = (rand() * 2 - 1) * Math.pow(1 - t, 2.6);
@@ -216,7 +206,6 @@ const getReverbIR = (ctx: AudioContext): AudioBuffer => {
 const BASS_PURITY_CHAIN = true;
 const SUB_MIN_HZ = 35;
 
-// D1: Honest filter readers
 const readCutoff = (v: any): number | null => {
   if (typeof v === 'number' && isFinite(v) && v > 0) return v;
   if (v && typeof v === 'object' && isFinite(v.cutoff) && v.cutoff > 0) return v.cutoff;
@@ -230,7 +219,6 @@ const resolveQ = (p: any): number => {
   return isFinite(q) ? clamp(q, 0.0001, 12) : 0.7;
 };
 
-// D7: Release cap tables
 const RELEASE_CAP_DESKTOP: Record<string, number> = { guitar: 1.6, organ: 0.35, synth: 2.6, bass: 1.2 };
 const RELEASE_CAP_MOBILE:  Record<string, number> = { guitar: 0.9, organ: 0.25, synth: 1.6, bass: 0.8 };
 
@@ -248,17 +236,15 @@ const createIndependentVoice = (
     eventParams: any = null,
     tempo: number = 72,
     role: string | null = null,
-    extras?: { rand?: () => number } // D5: Pass PRNG
+    extras?: { rand?: () => number } 
 ) => {
     const f0 = midiToHz(midi);
-    const adsr = getADSR(preset, eventParams, type);
+    const adsr = getADSR(preset, eventParams);
     const now = Math.max(when, ctx.currentTime);
-    const rand = extras?.rand ?? Math.random; // D5: Use passed PRNG or fallback
+    const rand = extras?.rand ?? Math.random; 
 
     const isEcho = eventParams?.isEcho === true;
     const isDub = eventParams?.isDub === true;
-
-    // D9: FAST-ATTACK BASS / PHASE-COHERENT START
     const isPhaseLocked = (type === 'bass' && preset.phaseLock !== false);
     
     const humanizeCents = preset.humanize?.pitchCents || 0;
@@ -269,7 +255,6 @@ const createIndependentVoice = (
     const voiceGain = ctx.createGain();
     const nodes: AudioNode[] = [voiceGain];
 
-    // D8: Robust envelope timing for short notes
     const MIN_EVENT = 0.002;
     const dur = Math.max(duration, 0.02);
     const rawAttack = isPhaseLocked ? 0.002 : adsr.a;
@@ -278,14 +263,15 @@ const createIndependentVoice = (
     const noteOffTime = now + Math.max(dur, attackTime + MIN_EVENT);
     const releaseStart = Math.max(noteOffTime, now + attackTime + MIN_EVENT);
 
-    // D7: ARP-aware release cap
     const capTable = globalVoiceLimit <= 60 ? RELEASE_CAP_MOBILE : RELEASE_CAP_DESKTOP;
     const releaseTime = ENABLE_RELEASE_CAP ? Math.min(adsr.r, capTable[type] ?? 2.0) : adsr.r;
     const releaseTau = Math.max(releaseTime / 3, 0.02);
     const expirationTime = releaseStart + releaseTau * 5 + 0.03;
 
-    // GAIN STAGING FIX: No VOICE_BALANCE here. It's applied in audio-engine-context.
-    const level = clamp(peak, 0, 1.5);
+    // #ЗАЧЕМ: Применяем централизованный баланс ролей.
+    const balanceKey = (ENABLE_ROLE_BALANCE ? (normalizeRole(role) ?? type) : type);
+    const roleMult = (MIXER_SETTINGS.roleBalance as any)[balanceKey] ?? 1.0;
+    const level = clamp(peak * roleMult, 0, 1.5);
 
     if (type === 'guitar') {
         const osc = ctx.createOscillator();
@@ -307,16 +293,12 @@ const createIndependentVoice = (
         nodes.push(osc);
     } else {
         const oscConfigs = preset.osc || [{ type: 'sawtooth', gain: 0.5 }];
-        let oscGainSum = 0;
         oscConfigs.forEach((o: any) => {
-            oscGainSum += (o.gain ?? 0.5);
             const osc = ctx.createOscillator();
             osc.type = o.type;
             osc.frequency.setValueAtTime(f0 * Math.pow(2, o.octave || 0), now);
-            
             const totalDetune = (o.detune || 0) + randomDetune;
             osc.detune.setValueAtTime(totalDetune, now);
-            
             const g = ctx.createGain();
             g.gain.value = o.gain ?? 0.5;
             osc.connect(g).connect(voiceGain);
@@ -325,7 +307,6 @@ const createIndependentVoice = (
             nodes.push(osc, g);
         });
 
-        let subApplied = 0;
         if (type === 'bass' && preset.sub?.on) {
             const subHz = f0 * Math.pow(2, preset.sub.octave ?? -1);
             if (subHz >= SUB_MIN_HZ) {
@@ -339,12 +320,7 @@ const createIndependentVoice = (
                 subOsc.start(now);
                 subOsc.stop(expirationTime);
                 nodes.push(subOsc, sg);
-                subApplied = preset.sub.gain ?? 0.5;
             }
-        }
-        if (type === 'bass' && subApplied > 0) {
-            // This logic is flawed, peak shouldn't be scaled like this.
-            // Re-evaluate if bass levels are off. For now, removing the scaling.
         }
     }
 
@@ -363,11 +339,8 @@ const createIndependentVoice = (
 
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-
-    // D1: Use new filter helpers
     const baseCutoff = resolveBaseCutoff(preset);
     filter.Q.value = resolveQ(preset);
-
     const NYQUIST_SAFE = Math.min(16000, ctx.sampleRate * 0.45);
     let finalCutoff = baseCutoff;
     const isBass = type === 'bass';
@@ -411,13 +384,11 @@ const createIndependentVoice = (
     if (sharedDelayNode && (preset.delay?.mix > 0.01 || isDub)) chainHead.connect(sharedDelayNode);
     chainHead.connect(output);
     
-    // D8: Use new timing for envelope
     voiceGain.gain.setValueAtTime(0, now);
     voiceGain.gain.linearRampToValueAtTime(level, now + attackTime);
     voiceGain.gain.setTargetAtTime(level * adsr.s, now + attackTime, decayTau);
     voiceGain.gain.setTargetAtTime(0.0001, releaseStart, releaseTau);
 
-    const balanceKey = (ENABLE_ROLE_BALANCE ? (normalizeRole(role) ?? type) : type);
     const record = { nodes, voiceState: { node: voiceGain, startTime: now }, disposed: false,
                      type, role: balanceKey, instrumentId, expirationTime, ctx };
     globalActiveVoices.add(record);
@@ -442,10 +413,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     preset = {} as any,
     output = ctx.destination,
     role = null,
-    seed // D5: Instrument seed
+    seed 
 }: { type?: string, preset?: any, output?: AudioNode, role?: string | null, seed?: number } = {}): Promise<InstrumentAPI> {
     
-    // D5: Seeded instrument ID
     const instSeed = isFinite(seed as number)
       ? hash32(seed as number, instrumentCounter++)
       : (Math.random() * 4294967296) >>> 0;
@@ -456,14 +426,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const instrumentGain = ctx.createGain();
     instrumentGain.gain.setValueAtTime(isFinite(currentPreset.volume) ? currentPreset.volume : 0.7, ctx.currentTime);
 
-    // D6: Routing state
     let currentOut: AudioNode = output;
     let destroyed = false;
 
     const panner = ctx.createStereoPanner();
     const hpf = ctx.createBiquadFilter();
     hpf.type = 'highpass';
-    
     const mudCut = ctx.createBiquadFilter();
     
     const pure = (BASS_PURITY_CHAIN && type === 'bass') ? currentPreset : null;
@@ -533,7 +501,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         const want = isFinite(mix) && mix > 0.001;
         if (want && !convolver.buffer) convolver.buffer = getReverbIR(ctx);
         reverbWet.gain.setTargetAtTime(want ? mix : 0, ctx.currentTime, 0.05);
-        // D6: Connect to currentOut, not hardcoded output
         if (want && !reverbActive) { reverbWet.connect(currentOut); reverbActive = true; }
         else if (!want && reverbActive) { try { reverbWet.disconnect(currentOut); } catch {} reverbActive = false; }
     };
@@ -542,14 +509,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     let head: AudioNode = instrumentGain;
     if (comp) { head.connect(comp); head = comp; }
     if (makeup) { head.connect(makeup); head = makeup; }
-    
     head.connect(hpf);
     hpf.connect(mudCut);
-
     let tail: AudioNode = mudCut;
     eqNodes.forEach(n => { tail.connect(n); tail = n; });
     tail.connect(panner);
-    panner.connect(currentOut); // D6: Connect to currentOut
+    panner.connect(currentOut);
 
     const sharedDelay = ctx.createDelay(2.0);
     const feedback = ctx.createGain();
@@ -570,7 +535,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
       Array.from(fadingVoices).filter(v => v.instrumentId === instrumentId).forEach(v => hardKill(v));
     };
     
-    // D6: Routing logic
     const routeTo = (dest: AudioNode) => {
       if (destroyed || dest === currentOut) return;
       try { panner.disconnect(currentOut); } catch {}
@@ -583,11 +547,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     return {
         get preset() { return currentPreset; },
         noteOn: (midi, when = ctx.currentTime, velocity = 1.0, duration = 1.0, params = null) => {
-            if (destroyed) return; // D6
-            // D5: Create seeded random function for this note
+            if (destroyed) return;
             const noteSeed = hash32(instSeed, noteCounter++, midi, params?.tick ?? 0);
             const rand = mulberry32(noteSeed);
-
             createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration,
               instrumentId, sharedDelay, params, params?.tempo || 72,
               normalizeRole(params?.role ?? role ?? null), { rand });
@@ -606,16 +568,16 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         },
         setVolume: (v) => { instrumentGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.02); },
         dispose: () => {
-            destroyed = true; // D6
+            destroyed = true;
             killOwn(true);
             [instrumentGain, hpf, mudCut, panner, sharedDelay, feedback, delayMix,
              comp, makeup, convolver, reverbWet, ...eqNodes].forEach(n => n?.disconnect());
-            currentOut = null as any; // D6
+            currentOut = null as any;
         },
         disconnect: () => { 
             [instrumentGain, hpf, mudCut, panner, sharedDelay, feedback, delayMix,
              comp, makeup, convolver, reverbWet, ...eqNodes].forEach(n => n?.disconnect()); 
         },
-        connect: (dest) => routeTo(dest || output) // D6
+        connect: (dest) => routeTo(dest || output)
     };
 }

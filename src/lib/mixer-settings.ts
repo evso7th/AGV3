@@ -1,125 +1,115 @@
-
 /**
- * @fileOverview Системные настройки громкости для микшера.
- * #ЗАЧЕМ: Этот файл позволяет гибко настраивать громкость отдельных слоев (бас, мелодия и т.д.)
- * и базовые уровни сэмплеров для каждого музыкального жанра в отдельности.
- *
- * #КАК_ИСПОЛЬЗОВАТЬ:
- * 1. `samplerDefaults`: Устанавливает базовую "сырую" громкость для групп инструментов.
- *    Это первый уровень калибровки.
- * 2. `genreBalance`: Содержит пресеты микшера для каждого жанра.
- *    - `default`: Это ОБЯЗАТЕЛЬНЫЙ, отказоустойчивый пресет. Если для какого-то жанра не будет
- *      найдена настройка, система будет использовать эти значения. НЕ УДАЛЯТЬ.
- *    - Для каждого жанра (blues, foundry и т.д.) можно задать свои множители громкости.
- *      Значение `1.0` означает "без изменений", `1.5` — на 50% громче, `0.5` — в два раза тише.
- *
- * #ОТКАЗОУСТОЙЧИВОСТЬ: Система спроектирована так, что отсутствие этого файла или отдельных
- * ключей в нем не приведет к падению. Если настройка для текущего жанра не найдена,
- * будет использована секция `default`. Если и там нет нужного слоя, будет использован множитель `1.0`.
+ * @fileOverview Единый пульт управления громкостью AuraGroove.
+ * #ЗАЧЕМ: ПЛАН №4000. Single Source of Truth для всей цепочки усиления.
  */
+
+import type { Genre, SoundMix, InstrumentPart } from '@/types/music';
 
 export const MIXER_SETTINGS = {
   /**
-   * Базовые уровни громкости для групп сэмплеров и синтезаторов.
-   * Эти значения служат отправной точкой перед применением жанровых балансов.
+   * 1. Уровень калибровки "железа" (Preamp).
+   * Эти значения компенсируют разницу в записи сэмплов.
    */
   samplerDefaults: {
-    master: 0.75,
-    acoustic: 1,
-    electric: 1,
-    piano: 1,
-    orchestral: 0.5, // Исправлена опечатка "orchecial"
-    chords: 1,
-    bass: 1,
-    cs80: 1,
+    master: 0.85,
+    acoustic: 0.15, 
+    electric: 0.15, 
+    piano: 0.75,
+    orchestral: 0.5, 
+    chords: 1.2,
+    bass: 1.0,
+    cs80: 0.4
   },
 
   /**
-   * Множители громкости для каждого инструментального слоя в разрезе по жанрам.
+   * 2. Баланс ролей (Per-Voice Multiplier).
+   * Применяется фабрикой на уровне каждой ноты для создания иерархии в миксе.
+   */
+  roleBalance: {
+    bass: 0.75,
+    melody: 1.50,
+    accompaniment: 1.50,
+    drums: 0.50,
+    sparkles: 0.80,
+    sfx: 0.40,
+    harmony: 0.60,
+    pianoAccompaniment: 0.50,
+  } as Record<string, number>,
+
+  /**
+   * 3. Жанровый баланс (Default Slider Positions).
+   * Эти значения устанавливают положение фейдеров в микшере.
    */
   genreBalance: {
-    /**
-     * ОБЯЗАТЕЛЬНЫЙ ПРЕСЕТ. Используется, если для текущего жанра нет своей секции.
-     */
     default: {
-      bass: 0.75,
-      melody: 1.50,
-      accompaniment: 1.50,
-      drums: 0.50,
-      sparkles: 0.80,
-      sfx: 0.40,
-      harmony: 0.60,
-      pianoAccompaniment: 0.50,
+      bass: 0.5,
+      melody: 0.5,
+      accompaniment: 0.5,
+      drums: 0.5,
+      sparkles: 0.5,
+      sfx: 0.5,
+      harmony: 0.5,
+      pianoAccompaniment: 0.5,
     },
-
-    /**
-     * Жанр: Blues
-     */
-    blues: {
-      bass: 0.75,
-      melody: 1.50,
-      accompaniment: 1.50,
-      drums: 0.50,
-      sparkles: 0.80,
-      sfx: 0.40,
-      harmony: 0.60,
-      pianoAccompaniment: 0.50,
-    },
-
-    /**
-     * Жанр: Foundry (Heavy)
-     */
     foundry: {
-      bass: 0.65, // Более плотный бас для тяжести
-      melody: 1.3, // Чуть тише, чтобы не конфликтовать с гитарами
-      accompaniment: 5.0,
-      drums: 0.65, // Более пробивные барабаны
-      sparkles: 0.50,
-      sfx: 0.50,
-      harmony: 0.20,
-      pianoAccompaniment: 1.25,
+      bass: 0.5,
+      melody: 0.5,
+      accompaniment: 0.5,
+      drums: 0.5,
+      sparkles: 0.5,
+      sfx: 0.5,
+      harmony: 0.5,
+      pianoAccompaniment: 0.3,
     },
-
-    /**
-     * Жанр: Ambient
-     */
     ambient: {
-      bass: 0.70,
-      melody: 1.60, // Мелодия может быть более выраженной
-      accompaniment: 1.60,
-      drums: 0.40, // Барабаны тише, если они есть
-      sparkles: 0.90, // Больше "воздуха"
-      sfx: 0.50,
-      harmony: 0.70,
-      pianoAccompaniment: 0.60,
+      bass: 0.5,
+      melody: 0.5,
+      accompaniment: 0.5,
+      drums: 0.5,
+      sparkles: 0.5,
+      sfx: 0.5,
+      harmony: 0.5,
+      pianoAccompaniment: 0.5,
     },
-
-    /**
-     * Жанр: Reggae
-     */
+    blues: {
+      bass: 0.5,
+      melody: 0.5,
+      accompaniment: 0.5,
+      drums: 0.5,
+      sparkles: 0.5,
+      sfx: 0.5,
+      harmony: 0.5,
+      pianoAccompaniment: 0.5,
+    },
+    cyber_blues: {
+      bass: 0.5,
+      melody: 0.5,
+      accompaniment: 0.5,
+      drums: 0.5,
+      sparkles: 0.5,
+      sfx: 0.5,
+      harmony: 0.5,
+      pianoAccompaniment: 0.5,
+    },
     reggae: {
-      bass: 0.90, // Бас - ключевой элемент
-      melody: 1.40,
-      accompaniment: 1.40,
-      drums: 0.55,
-      sparkles: 0.80,
-      sfx: 0.40,
-      harmony: 0.60,
-      pianoAccompaniment: 0.50,
+      bass: 0.5,
+      melody: 0.5,
+      accompaniment: 0.5,
+      drums: 0.5,
+      sparkles: 0.5,
+      sfx: 0.5,
+      harmony: 0.5,
+      pianoAccompaniment: 0.5,
     },
-
-    /**
-     * Жанр: Trance
-     */
-    trance: {
-      bass: 0.80,
-      melody: 1.50,
-      accompaniment: 1.50,
-      drums: 0.60, // Кик и перкуссия важны
-      sparkles: 0.80,
-      sfx: 0.45,
-      harmony: 0.65,
-      pianoAccompaniment: 0.50,
-    },
-  },
+    psybient: {
+      bass: 0.5,
+      melody: 0.5,
+      accompaniment: 0.5,
+      drums: 0.5,
+      sparkles: 0.5,
+      sfx: 0.5,
+      harmony: 0.5,
+      pianoAccompaniment: 0.5,
+    }
+  } as Record<string, SoundMix>
 };

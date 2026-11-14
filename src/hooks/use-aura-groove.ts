@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V40.2 — "Version Bump".
- * #ЗАЧЕМ: ПЛАН №1.0.23. Синхронизация версии до 1.0.23.
+ * @fileOverview Music Control Hook V40.3 — "Centralized Mixer Integration".
+ * #ЗАЧЕМ: Реализация ПЛАНА №4000. Использование MIXER_SETTINGS для сброса и управления.
  */
 'use client';
 
@@ -12,15 +12,12 @@ import type {
     Mood, Genre, RouteItem, SavedRoute
 } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
-import { GENRE_MASTER_MIX } from "@/lib/master-mix";
 import { useToast } from "./use-toast";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useFirestore } from "@/firebase/provider";
 import { TRANSLATIONS, type Language } from "@/lib/translations";
 import { saveMasterpiece } from "@/lib/firebase-service";
-import MIXER_SEEDS_RAW from '@/lib/assets/mixer-seeds.json';
-
-const MIXER_SEEDS = MIXER_SEEDS_RAW as PresetItem[];
+import { MIXER_SETTINGS } from "@/lib/mixer-settings";
 
 const SAVED_JOURNEYS_KEY = 'AuraGroove_SavedJourneys';
 const CURRENT_ROUTE_KEY = 'AuraGroove_CurrentRoute';
@@ -195,7 +192,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const [language, setLanguage] = useState<Language>('en');
 
-  // --- REFS FOR STABLE EVENT HANDLING ---
   const routeRef = useRef(route);
   const activeRouteIndexRef = useRef(0);
   const isAlbumModeRef = useRef(isAlbumMode);
@@ -354,8 +350,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [activeMixerPresetId]);
 
   const resetMixerToSystem = useCallback(() => {
-    const mix = GENRE_MASTER_MIX[genre] ?? GENRE_MASTER_MIX['ambient'];
-    handleVolumeChange('master', 0.65);
+    // #ЗАЧЕМ: ПЛАН №4000. Сброс к централизованным настройкам из MIXER_SETTINGS.
+    const mix = MIXER_SETTINGS.genreBalance[genre] ?? MIXER_SETTINGS.genreBalance.default;
+    handleVolumeChange('master', MIXER_SETTINGS.samplerDefaults.master);
     Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
     setActiveMixerPresetId(null);
     localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
@@ -446,8 +443,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
         if (v.drums !== undefined) handleVolumeChange('drums', v.drums);
         setActiveMixerPresetId(chosen.id);
     } else {
-        const mix = GENRE_MASTER_MIX[g] ?? GENRE_MASTER_MIX['ambient'];
-        handleVolumeChange('master', 0.65);
+        // #ЗАЧЕМ: ПЛАН №4000. Авто-балансировка фейдеров по жанру из MIXER_SETTINGS.
+        const mix = MIXER_SETTINGS.genreBalance[g] ?? MIXER_SETTINGS.genreBalance.default;
+        handleVolumeChange('master', MIXER_SETTINGS.samplerDefaults.master);
         Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
         setActiveMixerPresetId(null);
     }
@@ -486,18 +484,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
         try { currentList = JSON.parse(savedMixes); } catch(e) {}
     }
     
-    const missingSeeds = MIXER_SEEDS.filter(seed => !currentList.some(p => p.id === seed.id));
-    if (missingSeeds.length > 0) {
-        const newList = [...currentList, ...missingSeeds];
-        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(newList));
-        setMixerPresets(newList);
-    } else if (currentList.length > 0) {
-        setMixerPresets(currentList);
-    } else {
-        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(MIXER_SEEDS));
-        setMixerPresets(MIXER_SEEDS);
-    }
-
     const activeMixerId = localStorage.getItem(ACTIVE_MIXER_ID_KEY);
     if (activeMixerId) {
         const list = JSON.parse(localStorage.getItem(MIXER_PRESETS_KEY) || '[]');
@@ -556,11 +542,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings, route, activeRouteIndex]);
 
-  // --- STABILIZED MEDIA SESSION EFFECT ---
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
     
-    // #ЗАЧЕМ: ПЛАН №2815. Профессиональная трансляция метаданных для Bluetooth/Авто.
     const version = `${genre}_${mood}`;
     const origin = window.location.origin;
 
@@ -577,10 +561,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
         ]
     });
 
-    // ОБЯЗАТЕЛЬНО обновляем статус плеера для Bluetooth-модулей
     navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
 
-    // Heartbeat loop для поддержания активности сессии в Android/iOS
     const updatePosition = () => {
         if (!navigator.mediaSession.setPositionState) return;
         if (isPlaying) {
@@ -599,11 +581,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
     return () => clearInterval(interval);
   }, [genre, mood, isPlaying]);
 
-  // Separate effect for Action Handlers (Static)
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
     
-    // ОБЯЗАТЕЛЬНО объявляем обработчики. Без них магнитолы часто игнорируют метаданные!
     const actions: [MediaSessionAction, () => void][] = [
         ['play', () => setIsPlaying(true)],
         ['pause', () => setIsPlaying(false)],
