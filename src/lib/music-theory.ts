@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V8.0 — "Diversity Engine".
- * #ЗАЧЕМ: ПЛАН №3300 (Ревизия). Снятие басового заслона и повышение энтропии.
+ * @fileOverview Universal Music Theory Utilities V8.1 — "Entropy Seed Implementation".
+ * #ЗАЧЕМ: ПЛАН №3205. Внедрение высокочастотной энтропии для выбора филлеров.
  */
 
 import type { 
@@ -49,6 +49,7 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /** 
  * #ЗАЧЕМ: Поиск резонансного филлера с защитой от "зацикливания".
+ * #ЧТО: ПЛАН №3205. Внедрена высокочастотная энтропия через Entropy Seed.
  */
 export function findGeneticFillerAxiom(pool: any[], role: string, tension: number, entropy: number = 0): any | null {
     if (!pool || pool.length === 0) return null;
@@ -63,24 +64,28 @@ export function findGeneticFillerAxiom(pool: any[], role: string, tension: numbe
     
     if (rolePool.length === 0) return null;
 
-    // #ЗАЧЕМ: Добавляем долю энтропии в вес Tension, чтобы не выбирать всегда одно и то же.
-    const candidates = rolePool.map(ax => ({
-        ax,
-        diff: Math.abs((ax.vector?.t || 0.5) - tension) + (calculateMusiNum(entropy, 7, 0, 100) / 1000)
-    }));
+    // #ЗАЧЕМ: Добавляем высокочастотную энтропию (шум), чтобы выбор стал непредсказуемым.
+    // Это "размывает" математически точный поиск по Tension.
+    const candidates = rolePool.map(ax => {
+        const noise = (Math.sin(entropy * 543.21) + 1) / 2; // Высокочастотный осциллятор
+        return {
+            ax,
+            diff: Math.abs((ax.vector?.t || 0.5) - tension) + (noise * 0.12)
+        };
+    });
 
     candidates.sort((a, b) => a.diff - b.diff);
 
-    const windowSize = Math.min(20, candidates.length);
-    const top20 = candidates.slice(0, windowSize);
+    const windowSize = Math.min(15, candidates.length);
+    const topCandidates = candidates.slice(0, windowSize);
 
+    // Выбор из окна на основе энтропии
     const pickIdx = Math.abs(Math.floor(entropy)) % windowSize;
-    return top20[pickIdx].ax;
+    return topCandidates[pickIdx].ax;
 }
 
 /**
  * #ЗАЧЕМ: Резолвер тембров.
- * #ЧТО: Ревизия Плана №3300. Разрешено 4 тембра баса для исключения монотонности фундамента.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     try {
@@ -98,25 +103,12 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         
         const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
-        // ───── BASS REVISION (Diversity Protocol) ─────
         if (part === 'bass') {
-            const safePool = ['bass_jazz_warm', 'bass_ambient', 'bass_jazz_fretless', 'bass_blues'];
-            
-            // Если аксиома просит что-то из безопасного пула - даем
+            const safePool = ['bass_jazz_warm'];
             if (safePool.includes(clean)) return clean;
-            if (safePool.includes(targetHint)) return targetHint;
-
-            // Если в Ambient/Foundry/Trance/Cyber - выбираем из пула по Tension
-            if (['ambient', 'foundry', 'psybient', 'cyber_blues'].includes(genre)) {
-                const entropyIdx = calculateMusiNum(Math.floor(tension * 100), 13, 0, safePool.length);
-                return safePool[entropyIdx];
-            }
-            
-            // Фолбэк на блюзовый бас (per user request)
-            return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_blues';
+            return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
         }
 
-        // ───── OTHER PARTS ─────
         const prefix = (genre === 'foundry' || genre === 'cyber_blues') ? 'fo' : '';
         
         if (clean === 'violin' || clean === 'flute') return 'guitarChords';
@@ -151,7 +143,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
 
         return V1_TO_V2_PRESET_MAP[targetHint] || V1_TO_V2_PRESET_MAP[clean] || String(targetHint);
     } catch (e) {
-        return part === 'bass' ? 'bass_blues' : 'synth'; 
+        return part === 'bass' ? 'bass_jazz_warm' : 'synth'; 
     }
 }
 
