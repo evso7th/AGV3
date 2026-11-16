@@ -1,6 +1,6 @@
 /**
- * @file AuraGroove Music Worker V7.8 — "Filler Diversity".
- * #ЗАЧЕМ: Передача энтропии в GeneticMemoryDecorator для расширения репертуара пианиста.
+ * @file AuraGroove Music Worker V8.0 — "Global Axiom History".
+ * #ЗАЧЕМ: ПЛАН №3205. Внедрение реестра сыгранных фраз для подавления повторов.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -23,6 +23,7 @@ const Scheduler = {
     isRunning: false,
     barCount: 0,
     sessionLickHistory: [] as string[],
+    sessionAxiomHistory: [] as string[], // #ЗАЧЕМ: Глобальный блэклист фраз
     cloudAxiomPool: [] as any[], 
     filterRotationIndex: 0,
     playedTrackHistory: [] as string[],
@@ -139,11 +140,11 @@ const Scheduler = {
             activeAnchorId: anchorInfo.id, 
             activeAnchorRoot: anchorInfo.nativeRoot, 
             sessionLickHistory: this.sessionLickHistory,
+            sessionAxiomHistory: this.sessionAxiomHistory, // Проброс глобальной истории фраз
             cloudAxioms: this.cloudAxiomPool,
             isImprovising: isImprovising
         };
 
-        // #ЗАЧЕМ: Рвем ссылки на старый движок для GC.
         fractalMusicEngine = undefined;
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true); 
@@ -240,7 +241,6 @@ const Scheduler = {
                  this.bpmLocked = false;
                  this.awaitingDirective = true;
                  this.awaitingSince = Date.now();
-                 // #ЗАЧЕМ: Пауза 2с для очистки памяти.
                  return 2000;
              }
              
@@ -256,6 +256,21 @@ const Scheduler = {
         let payload: any;
         try {
             payload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
+            
+            // #ЗАЧЕМ: Обновление глобального реестра сыгранных фраз
+            if (payload.activeAxioms) {
+                Object.values(payload.activeAxioms).forEach((id: any) => {
+                    if (typeof id === 'string' && id !== 'none' && id.length > 5) {
+                        if (!this.sessionAxiomHistory.includes(id)) {
+                            this.sessionAxiomHistory.push(id);
+                            // Лимит 500 фраз (~30 минут игры при средней плотности)
+                            if (this.sessionAxiomHistory.length > 500) this.sessionAxiomHistory.shift();
+                        }
+                    }
+                });
+                // Проброс актуальной истории обратно в движок для следующего такта
+                fractalMusicEngine.updateConfig({ sessionAxiomHistory: this.sessionAxiomHistory } as any);
+            }
         } catch (e) {
             this.initializeEngine(this.settings);
             return 1000;
@@ -264,7 +279,6 @@ const Scheduler = {
         const foundChord = fractalMusicEngine.suiteDNA?.harmonyTrack.find(chord => this.barCount >= chord.bar && this.barCount < chord.bar + chord.durationBars);
         const currentRoot = foundChord?.rootNote || fractalMusicEngine.suiteDNA?.harmonyTrack[0].rootNote || 60;
 
-        // ПЛАН №3205: Передача энтропии (seed + barCount) для разнообразия филлеров
         const memorizedEvents = GeneticMemoryDecorator.fillGaps(
             payload.events,
             this.settings.genre,
@@ -312,6 +326,7 @@ self.onmessage = (event: MessageEvent) => {
             case 'init': 
                 Scheduler.settings = { ...Scheduler.settings, ...data }; 
                 if (data.sessionLickHistory) Scheduler.sessionLickHistory = data.sessionLickHistory;
+                if (data.sessionAxiomHistory) Scheduler.sessionAxiomHistory = data.sessionAxiomHistory;
                 if (data.playedTrackHistory) Scheduler.playedTrackHistory = data.playedTrackHistory.map((h: any) => normalizeStr(String(h)));
                 break;
             case 'start': Scheduler.start(); break;

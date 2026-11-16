@@ -1,6 +1,6 @@
 /**
- * @fileOverview Ambient Brain V118.2 — "Velvet Standard".
- * #ЗАЧЕМ: Реализация октавного заслона (MIDI 71) для мягкого звучания.
+ * @fileOverview Ambient Brain V119.0 — "Absolute Diversity".
+ * #ЗАЧЕМ: ПЛАН №3205. Внедрение глобальной памяти фраз и повышение энтропии выбора.
  */
 
 import type {
@@ -52,8 +52,6 @@ export class AmbientBrain {
 
     // --- State & Memory ---
     private soloistBusyUntilBar: number = -1;
-    private soloistRestingUntilBar: number = -1;
-    
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentAxiomMaxTick: number = 0;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
@@ -68,9 +66,8 @@ export class AmbientBrain {
     private microTransposition: number = 0;
 
     private heldNotesState: Map<string, { midi: number, barCount: number }> = new Map();
-    private lickHistory: string[] = [];
+    private sessionAxiomHistory: string[] = []; // Глобальный блэклист
 
-    // #ЗАЧЕМ: Вельветовый Стандарт. Ограничение 4-й октавой.
     private readonly MELODY_CEILING = 71;
 
     private cloudAxioms: any[] = [];
@@ -94,26 +91,27 @@ export class AmbientBrain {
         return { next, nextInt };
     }
 
-    // #ЗАЧЕМ: ПЛАН №1480. Октавный враппинг для мелодии.
     private wrapMelody(midi: number): number {
         let v = midi;
         while (v > this.MELODY_CEILING) v -= 12;
         return v;
     }
 
-    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean) {
+    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean, axiomHistory?: string[]) {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (this.isImprovising !== undefined) this.isImprovising = isImprovising;
+        if (axiomHistory !== undefined) this.sessionAxiomHistory = axiomHistory;
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
     }
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
         if (totalBars <= 0) return 0;
-        const startOffset = calculateMusiNum(this.seed, 13, 0, totalBars);
+        // #ЗАЧЕМ: Повышение энтропии через Tension и побитовый сдвиг
+        const startOffset = calculateMusiNum(this.seed, 13, Math.floor(tension * 100), totalBars);
         if (this.isImprovising) {
-            return calculateMusiNum(epoch + startOffset, 11, this.seed, totalBars);
+            return calculateMusiNum(epoch + startOffset + (this.seed % 7), 17, this.seed ^ epoch, totalBars);
         }
         const barsElapsed = epoch - startEpoch;
         return (barsElapsed + startOffset) % totalBars;
@@ -135,6 +133,11 @@ export class AmbientBrain {
             ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
             : poolToUse.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+                // #ЗАЧЕМ: Ограничение кросс-жанрового загрязнения в Ambient
+                const tension = dna.tensionMap?.[epoch] ?? 0.5;
+                if (tension < 0.7) {
+                    return genres.includes(this.genre);
+                }
                 return genres.includes(this.genre) || genres.includes('rock') || genres.includes('blues');
             });
 
@@ -163,22 +166,22 @@ export class AmbientBrain {
                 const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
                 
                 const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-                const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
+                
+                // #ЗАЧЕМ: Проверка по ГЛОБАЛЬНОЙ истории фраз (Anti-Deja Vu)
+                const freshLicks = sameOffsetPool.filter(ax => !this.sessionAxiomHistory.includes(ax.id));
                 
                 let selected = null;
                 if (freshLicks.length > 0) {
                     selected = freshLicks[this.random.nextInt(freshLicks.length)];
                 } else if (sameOffsetPool.length > 0) {
+                    // Если все фразы в офсете несвежие - берем любую из этого офсета
                     selected = sameOffsetPool[this.random.nextInt(sameOffsetPool.length)];
                 } else {
-                    const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
+                    const anyFresh = basePool.filter(ax => !this.sessionAxiomHistory.includes(ax.id));
                     selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
                 }
 
                 if (selected) {
-                    this.lickHistory.push(selected.id);
-                    if (this.lickHistory.length > 50) this.lickHistory.shift();
-
                     this.currentTrackName = selected.compositionId;
                     this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
                     this.currentPreferredInstrument = selected.preferredInstrument || null;
@@ -272,20 +275,27 @@ export class AmbientBrain {
 
         // 1. Bass
         if (hints.bass) {
+            const ensembleAnchor = this.currentTheme ? this.currentTheme.startBar : epoch;
+            const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
+            const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
+
             let b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
-                ? this.renderHeritageBass(epoch, resChord, tension)
+                ? this.renderHeritageBass(epoch, resChord, tension, mosaicBar)
                 : this.renderPulsatingBass(resChord, epoch, tension);
             
             b = this.applyAntiPedal('bass', b, resChord);
             events.push(...b.flatMap(e => this.rippleLongNote(e, resChord, 0.6)));
-            layerAxioms.bass = this.currentBassTheme ? 'Sibling DNA' : 'Algorithm Pulse';
+            layerAxioms.bass = this.currentBassTheme ? this.currentBassTheme.id : 'Algorithm Pulse';
         }
 
         // 2. Melody
         let m: FractalEvent[] = []; 
         if (hints.melody) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                m = this.renderHeritageMelody(epoch, resChord, tension);
+                const totalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
+                const startEpoch = this.currentTheme.startBar;
+                const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
+                m = this.renderHeritageMelody(epoch, resChord, tension, mosaicBar);
                 if (m.length > 0) layerAxioms.melody = this.currentTheme.id;
             }
             
@@ -305,7 +315,9 @@ export class AmbientBrain {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
             if (target && hints[target] && !usedTargetLayers.has(target)) {
-                let rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension);
+                const totalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
+                const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
+                let rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
                 rendered = this.applyAntiPedal(target, rendered, resChord);
                 events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2)));
                 usedTargetLayers.add(target);
@@ -430,18 +442,14 @@ export class AmbientBrain {
         return events;
     }
 
-    private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+    private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, mosaicBar: number): FractalEvent[] {
         if (!this.currentTheme) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-        const startEpoch = this.soloistBusyUntilBar - totalBars;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         const rawBarNotes = this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
         const barNotes = this.applyMutationLogic(rawBarNotes, tension, this.seed + epoch);
         
         return barNotes.map(n => {
             const isLong = n.d > 3;
-            // #ЗАЧЕМ: Вельветовый Стандарт.
             const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
             return {
                 type: 'melody', 
@@ -460,11 +468,8 @@ export class AmbientBrain {
         });
     }
 
-    private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+    private renderHeritageBass(epoch: number, chord: GhostChord, tension: number, mosaicBar: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTickBass / TICKS_PER_BAR);
-        const startEpoch = this.currentBassTheme.startBar;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         const rawBarNotes = this.currentBassTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
         const barNotes = this.applyMutationLogic(rawBarNotes, tension, this.seed + epoch + 1);
@@ -476,9 +481,7 @@ export class AmbientBrain {
         }));
     }
 
-    private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
-        const totalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
-        const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
+    private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number, mosaicBar: number): FractalEvent[] {
         const offset = mosaicBar * TICKS_PER_BAR;
         const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
         const barNotes = this.applyMutationLogic(rawBarNotes, tension, this.seed + epoch + 2);

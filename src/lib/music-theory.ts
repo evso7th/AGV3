@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V7.0 — "Warm Bass Enforcement".
- * #ЗАЧЕМ: ПЛАН №3300. Глобальный приоритет Warm Jazz Bass и защита от клиппинга.
+ * @fileOverview Universal Music Theory Utilities V8.0 — "Diversity Engine".
+ * #ЗАЧЕМ: ПЛАН №3300 (Ревизия). Снятие басового заслона и повышение энтропии.
  */
 
 import type { 
@@ -63,9 +63,10 @@ export function findGeneticFillerAxiom(pool: any[], role: string, tension: numbe
     
     if (rolePool.length === 0) return null;
 
+    // #ЗАЧЕМ: Добавляем долю энтропии в вес Tension, чтобы не выбирать всегда одно и то же.
     const candidates = rolePool.map(ax => ({
         ax,
-        diff: Math.abs((ax.vector?.t || 0.5) - tension)
+        diff: Math.abs((ax.vector?.t || 0.5) - tension) + (calculateMusiNum(entropy, 7, 0, 100) / 1000)
     }));
 
     candidates.sort((a, b) => a.diff - b.diff);
@@ -79,7 +80,7 @@ export function findGeneticFillerAxiom(pool: any[], role: string, tension: numbe
 
 /**
  * #ЗАЧЕМ: Резолвер тембров.
- * #ЧТО: ПЛАН №3300. bass_jazz_warm — единственный разрешенный бас при любых сомнениях.
+ * #ЧТО: Ревизия Плана №3300. Разрешено 4 тембра баса для исключения монотонности фундамента.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     try {
@@ -97,16 +98,25 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         
         const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
-        // #ЗАЧЕМ: ПЛАН №3300. Тотальный заслон против шлепков.
+        // ───── BASS REVISION (Diversity Protocol) ─────
         if (part === 'bass') {
-            const isAggressive = clean.includes('slap') || clean.includes('rock') || clean.includes('pick') || clean.includes('acid') || clean.includes('house') || clean.includes('foundry');
-            if (isAggressive || genre === 'ambient' || genre === 'foundry' || genre === 'psybient' || genre === 'cyber_blues') {
-                return 'bass_jazz_warm'; 
+            const safePool = ['bass_jazz_warm', 'bass_ambient', 'bass_jazz_fretless', 'bass_blues'];
+            
+            // Если аксиома просит что-то из безопасного пула - даем
+            if (safePool.includes(clean)) return clean;
+            if (safePool.includes(targetHint)) return targetHint;
+
+            // Если в Ambient/Foundry/Trance/Cyber - выбираем из пула по Tension
+            if (['ambient', 'foundry', 'psybient', 'cyber_blues'].includes(genre)) {
+                const entropyIdx = calculateMusiNum(Math.floor(tension * 100), 13, 0, safePool.length);
+                return safePool[entropyIdx];
             }
-            return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
+            
+            // Фолбэк на блюзовый бас (per user request)
+            return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_blues';
         }
 
-        // #ЗАЧЕМ: Cyber Blues теперь использует пресеты Foundry (prefix 'fo').
+        // ───── OTHER PARTS ─────
         const prefix = (genre === 'foundry' || genre === 'cyber_blues') ? 'fo' : '';
         
         if (clean === 'violin' || clean === 'flute') return 'guitarChords';
@@ -141,7 +151,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
 
         return V1_TO_V2_PRESET_MAP[targetHint] || V1_TO_V2_PRESET_MAP[clean] || String(targetHint);
     } catch (e) {
-        return part === 'bass' ? 'bass_jazz_warm' : 'synth'; 
+        return part === 'bass' ? 'bass_blues' : 'synth'; 
     }
 }
 
@@ -151,7 +161,7 @@ export function normalizeStr(s: string): string {
 
 export function keyToMidiRoot(key: string | null | undefined): number | null {
     if (!key) return null;
-    const noteMap: Record<string, number> = { 'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11 };
+    const noteMap: Record<string, number> = { 'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'GB':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11 };
     const rootName = key.match(/^[A-G][#b]?/)?.[0] || 'C';
     const offset = noteMap[rootName] || 0;
     return 48 + offset;

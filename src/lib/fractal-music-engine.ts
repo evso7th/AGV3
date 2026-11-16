@@ -48,6 +48,7 @@ interface EngineConfig {
   introBars: number;
   ancestor?: any;
   sessionLickHistory?: string[];
+  sessionAxiomHistory?: string[]; // Глобальная история фраз
   cloudAxioms?: any[]; 
   selectedCompositionIds?: string[];
   activeAnchorId?: string | null;
@@ -57,8 +58,8 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V47.5 — "Global Warm Bass Standard".
- * #ЗАЧЕМ: ПЛАН №3300. bass_jazz_warm становится абсолютным дефолтом.
+ * @fileOverview Fractal Music Engine V48.0 — "Absolute Diversity Protocol".
+ * #ЗАЧЕМ: Реализация глобального блэклиста фраз для исключения дежавю.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -97,20 +98,21 @@ export class FractalMusicEngine {
 
       if (seedChanged) this.random = seededRandom(this.config.seed);
 
-      if (newConfig.cloudAxioms || newConfig.selectedCompositionIds || newConfig.activeAnchorId !== undefined || heritageChanged) {
+      if (newConfig.cloudAxioms || newConfig.selectedCompositionIds || newConfig.activeAnchorId !== undefined || heritageChanged || newConfig.sessionAxiomHistory) {
           const impro = (this.config.selectedCompositionIds || []).length === 0;
           this.config.isImprovising = impro;
 
           const axioms = this.config.cloudAxioms || [];
           const anchor = this.config.activeAnchorId;
           const useH = this.config.useHeritage;
+          const axiomHistory = this.config.sessionAxiomHistory || [];
 
-          if (this.bluesBrain) this.bluesBrain.updateCloudAxioms(axioms, this.config.selectedCompositionIds, anchor, null, useH, impro);
-          if (this.cyberBluesBrain) this.cyberBluesBrain.updateCloudAxioms(axioms, this.config.selectedCompositionIds, anchor, null, useH, impro);
-          if (this.ambientBrain) this.ambientBrain.updateCloudAxioms(axioms, anchor, useH, impro);
-          if (this.tranceBrain) this.tranceBrain.updateCloudAxioms(axioms, anchor, useH, impro);
-          if (this.reggaeBrain) this.reggaeBrain.updateCloudAxioms(axioms, anchor, useH, impro);
-          if (this.foundryBrain) this.foundryBrain.updateCloudAxioms(axioms, anchor, useH, impro);
+          if (this.bluesBrain) this.bluesBrain.updateCloudAxioms(axioms, this.config.selectedCompositionIds, anchor, null, useH, axiomHistory);
+          if (this.cyberBluesBrain) this.cyberBluesBrain.updateCloudAxioms(axioms, this.config.selectedCompositionIds, anchor, null, useH, axiomHistory);
+          if (this.ambientBrain) this.ambientBrain.updateCloudAxioms(axioms, anchor, useH, axiomHistory);
+          if (this.tranceBrain) this.tranceBrain.updateCloudAxioms(axioms, anchor, useH, axiomHistory);
+          if (this.reggaeBrain) this.reggaeBrain.updateCloudAxioms(axioms, anchor, useH, axiomHistory);
+          if (this.foundryBrain) this.foundryBrain.updateCloudAxioms(axioms, anchor, useH, axiomHistory);
       }
 
       if(moodOrGenreChanged || seedChanged || heritageChanged) this.initialize(true);
@@ -163,28 +165,31 @@ export class FractalMusicEngine {
     const axioms = this.config.cloudAxioms || [];
     const anchor = this.config.activeAnchorId;
     const useH = this.config.useHeritage;
+    const axiomHistory = this.config.sessionAxiomHistory || [];
 
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood, this.config.sessionLickHistory, axioms, this.config.selectedCompositionIds, anchor, this.config.genre, useH);
+        this.bluesBrain.updateCloudAxioms(axioms, this.config.selectedCompositionIds, anchor, null, useH, axiomHistory);
         this.cyberBluesBrain = null; this.ambientBrain = null; this.tranceBrain = null; this.reggaeBrain = null; this.foundryBrain = null;
     } else if (this.config.genre === 'cyber_blues') {
         this.cyberBluesBrain = new CyberBluesBrain(this.config.seed, this.config.mood, this.config.sessionLickHistory, axioms, this.config.selectedCompositionIds, anchor, this.config.genre, useH);
+        this.cyberBluesBrain.updateCloudAxioms(axioms, this.config.selectedCompositionIds, anchor, null, useH, axiomHistory);
         this.bluesBrain = null; this.ambientBrain = null; this.tranceBrain = null; this.reggaeBrain = null; this.foundryBrain = null;
     } else if (this.config.genre === 'psybient') {
         this.tranceBrain = new TranceBrain(this.config.seed, this.config.mood, this.config.genre, useH);
-        this.tranceBrain.updateCloudAxioms(axioms, anchor, useH, impro);
+        this.tranceBrain.updateCloudAxioms(axioms, anchor, useH, axiomHistory);
         this.bluesBrain = null; this.cyberBluesBrain = null; this.ambientBrain = null; this.reggaeBrain = null; this.foundryBrain = null;
     } else if (this.config.genre === 'reggae') {
         this.reggaeBrain = new ReggaeBrain(this.config.seed, this.config.mood, this.config.genre, useH);
-        this.reggaeBrain.updateCloudAxioms(axioms, anchor, useH, impro);
+        this.reggaeBrain.updateCloudAxioms(axioms, anchor, useH, axiomHistory);
         this.bluesBrain = null; this.cyberBluesBrain = null; this.ambientBrain = null; this.tranceBrain = null; this.foundryBrain = null;
     } else if (this.config.genre === 'foundry') {
         this.foundryBrain = new DarkFoundryBrain(this.config.seed, this.config.mood, this.config.genre, useH);
-        this.foundryBrain.updateCloudAxioms(axioms, anchor, useH, impro);
+        this.foundryBrain.updateCloudAxioms(axioms, anchor, useH, axiomHistory);
         this.bluesBrain = null; this.cyberBluesBrain = null; this.ambientBrain = null; this.tranceBrain = null; this.reggaeBrain = null;
     } else {
         this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood, this.config.genre, useH);
-        this.ambientBrain.updateCloudAxioms(axioms, anchor, useH, impro);
+        this.ambientBrain.updateCloudAxioms(axioms, anchor, useH, axiomHistory);
         this.bluesBrain = null; this.cyberBluesBrain = null; this.tranceBrain = null; this.reggaeBrain = null; this.foundryBrain = null;
     }
 
@@ -280,8 +285,7 @@ export class FractalMusicEngine {
 
                 let defaultInst = 'synth';
                 if (part === 'bass') {
-                    // #ЗАЧЕМ: ПЛАН №3300. bass_jazz_warm — абсолютный дефолт для всех жанров.
-                    defaultInst = 'bass_jazz_warm';
+                    defaultInst = 'bass_blues'; // Фолбэк на блюзовый бас
                 }
                 else if (part === 'melody') {
                     if (this.config.genre === 'psybient' || this.config.genre === 'foundry') defaultInst = 'synth';
@@ -333,11 +337,6 @@ export class FractalMusicEngine {
 
     if (result.instrumentOverrides) {
         Object.assign(instrumentHints, result.instrumentOverrides);
-    }
-
-    // #ЗАЧЕМ: ПЛАН №3300. Дублирующая защита на уровне Hints.
-    if (this.config.genre === 'cyber_blues' || this.config.genre === 'foundry' || this.config.genre === 'psybient') {
-        instrumentHints.bass = 'bass_jazz_warm';
     }
 
     this.lastEvents = [...result.events];
