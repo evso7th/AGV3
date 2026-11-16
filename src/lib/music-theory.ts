@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V8.1 — "Entropy Seed Implementation".
- * #ЗАЧЕМ: ПЛАН №3205. Внедрение высокочастотной энтропии для выбора филлеров.
+ * @fileOverview Universal Music Theory Utilities V8.2 — "Bass Purity Protocol".
+ * #ЗАЧЕМ: ПЛАН №3300. Либерализация баса: 4 безопасных тембра и динамический резолвер.
  */
 
 import type { 
@@ -65,7 +65,6 @@ export function findGeneticFillerAxiom(pool: any[], role: string, tension: numbe
     if (rolePool.length === 0) return null;
 
     // #ЗАЧЕМ: Добавляем высокочастотную энтропию (шум), чтобы выбор стал непредсказуемым.
-    // Это "размывает" математически точный поиск по Tension.
     const candidates = rolePool.map(ax => {
         const noise = (Math.sin(entropy * 543.21) + 1) / 2; // Высокочастотный осциллятор
         return {
@@ -79,13 +78,13 @@ export function findGeneticFillerAxiom(pool: any[], role: string, tension: numbe
     const windowSize = Math.min(15, candidates.length);
     const topCandidates = candidates.slice(0, windowSize);
 
-    // Выбор из окна на основе энтропии
     const pickIdx = Math.abs(Math.floor(entropy)) % windowSize;
     return topCandidates[pickIdx].ax;
 }
 
 /**
  * #ЗАЧЕМ: Резолвер тембров.
+ * #ОБНОВЛЕНО (ПЛАН №3300): Либерализация баса. Внедрен безопасный пул и динамическая группа.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     try {
@@ -103,10 +102,27 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         
         const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
+        // ───── BASS PURITY PROTOCOL (PLAN №3300) ─────
         if (part === 'bass') {
-            const safePool = ['bass_jazz_warm'];
+            const safePool = ['bass_jazz_warm', 'bass_ambient', 'bass_jazz_fretless', 'bass_blues'];
+            
+            // 1. Обработка динамической группы
+            if (clean === 'dynamicbass') {
+                if (tension < 0.35) return 'bass_ambient';
+                if (tension < 0.65) return 'bass_jazz_warm';
+                if (tension < 0.85) return 'bass_jazz_fretless';
+                return 'bass_blues';
+            }
+
+            // 2. Если инструмент уже в безопасном пуле
             if (safePool.includes(clean)) return clean;
-            return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
+            
+            // 3. Маппинг с проверкой на "безопасность"
+            const mapped = BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean];
+            if (mapped && safePool.includes(mapped)) return mapped;
+
+            // 4. Глобальный фолбэк согласно ПЛАНУ №3300
+            return 'bass_blues';
         }
 
         const prefix = (genre === 'foundry' || genre === 'cyber_blues') ? 'fo' : '';
@@ -143,7 +159,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
 
         return V1_TO_V2_PRESET_MAP[targetHint] || V1_TO_V2_PRESET_MAP[clean] || String(targetHint);
     } catch (e) {
-        return part === 'bass' ? 'bass_jazz_warm' : 'synth'; 
+        return part === 'bass' ? 'bass_blues' : 'synth'; 
     }
 }
 
