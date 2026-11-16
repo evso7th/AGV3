@@ -63,11 +63,12 @@ export class ReggaeBrain {
     private currentDrumAxioms: { phrase: any[], role: string, id: string }[] = [];
 
     private soloistBusyUntilBar: number = -1;
-    private drumRestUntilBar: number = -1;
+    private soloistRestingUntilBar: number = -1;
     private currentMutationType: string = 'none';
     private microTransposition: number = 0;
     private currentTransposition: number = 0; 
     private lickHistory: string[] = [];
+    private sessionAxiomHistory: string[] = [];
 
     // #ЗАЧЕМ: Вельветовый Стандарт. Ограничение 4-й октавой.
     private readonly MELODY_CEILING = 71;
@@ -99,11 +100,12 @@ export class ReggaeBrain {
         return v;
     }
 
-    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean) {
+    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean, axiomHistory?: string[]) {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (this.isImprovising !== undefined) this.isImprovising = isImprovising;
+        if (axiomHistory !== undefined) this.sessionAxiomHistory = axiomHistory;
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
     }
 
@@ -157,7 +159,7 @@ export class ReggaeBrain {
                     const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
                     
                     const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-                    const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
+                    const freshLicks = sameOffsetPool.filter(ax => !this.sessionAxiomHistory.includes(ax.id));
 
                     let selected = null;
                     if (freshLicks.length > 0) {
@@ -165,7 +167,7 @@ export class ReggaeBrain {
                     } else if (sameOffsetPool.length > 0) {
                         selected = sameOffsetPool[this.random.nextInt(sameOffsetPool.length)];
                     } else {
-                        const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
+                        const anyFresh = basePool.filter(ax => !this.sessionAxiomHistory.includes(ax.id));
                         selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
                     }
 
@@ -174,6 +176,7 @@ export class ReggaeBrain {
                         if (this.lickHistory.length > 50) this.lickHistory.shift();
 
                         this.currentTrackName = selected.compositionId;
+                        this.currentLickId = selected.id || 'DNA-Lick';
                         this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
                         this.currentPreferredInstrument = selected.preferredInstrument || null;
                         const cid = normalizeStr(selected.compositionId);
@@ -453,7 +456,7 @@ export class ReggaeBrain {
 
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number, mosaicBar: number): FractalEvent[] {
         let mutated = this.applyMutationLogic(phrase, tension, this.seed + epoch + 1);
-        const localBar = mosaicBar % this.phraseBarCount(mutated);
+        const localBar = Math.abs(mosaicBar) % this.phraseBarCount(mutated);
         const offset = localBar * TICKS_PER_BAR;
         return mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
             type, note: this.wrapMelody(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),

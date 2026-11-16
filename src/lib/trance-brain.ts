@@ -96,6 +96,7 @@ export class TranceBrain {
   private currentTransposition: number = 0;
   private microTransposition: number = 0;
   private lickHistory: string[] = [];
+  private sessionAxiomHistory: string[] = [];
   private cloudAxioms: any[] = [];
   private activeAnchorId: string | null = null;
 
@@ -176,13 +177,15 @@ export class TranceBrain {
     axioms: any[],
     activeAnchorId?: string | null,
     useHeritage?: boolean,
-    isImprovising?: boolean
+    isImprovising?: boolean,
+    axiomHistory?: string[]
   ) {
     this.cloudAxioms = axioms || [];
     this.config.cloudAxioms = axioms;
     if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
     if (useHeritage !== undefined) this.useHeritage = useHeritage;
     if (isImprovising !== undefined) this.isImprovising = isImprovising;
+    if (axiomHistory !== undefined) this.sessionAxiomHistory = axiomHistory;
     if (this.config.cloudAxioms.length > 0 && this.useHeritage) {
       this.soloistBusyUntilBar = -1;
     }
@@ -289,14 +292,17 @@ export class TranceBrain {
           const tension = dna.tensionMap?.[epoch] ?? 0.5;
           const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
           const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-          const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
+          
+          // #ЗАЧЕМ: ПЛАН №3205. Глобальный блэклист фраз
+          const freshLicks = sameOffsetPool.filter(ax => !this.sessionAxiomHistory.includes(ax.id));
+          
           let selected = null;
           if (freshLicks.length > 0) {
             selected = freshLicks[this.random.nextInt(freshLicks.length)];
           } else if (sameOffsetPool.length > 0) {
             selected = sameOffsetPool[this.random.nextInt(sameOffsetPool.length)];
           } else {
-            const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
+            const anyFresh = basePool.filter(ax => !this.sessionAxiomHistory.includes(ax.id));
             selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
           }
           if (selected) {

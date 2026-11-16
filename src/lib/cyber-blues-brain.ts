@@ -96,6 +96,7 @@ export class CyberBluesBrain {
   private currentTransposition: number = 0;
   private microTransposition: number = 0;
   private lickHistory: string[] = [];
+  private sessionAxiomHistory: string[] = [];
   
   private lastSparkleTime = -999;
 
@@ -179,7 +180,8 @@ export class CyberBluesBrain {
     activeAnchorId?: string | null,
     activeAnchorRoot?: number | null,
     useHeritage?: boolean,
-    isImprovising?: boolean
+    isImprovising?: boolean,
+    axiomHistory?: string[]
   ) {
     const wasEmpty = !this.config.cloudAxioms || this.config.cloudAxioms.length === 0;
     this.config.cloudAxioms = axioms;
@@ -189,6 +191,7 @@ export class CyberBluesBrain {
     if (this.config.activeAnchorId === null) this.sessionAnchorId = null;
     if (useHeritage !== undefined) this.config.useHeritage = useHeritage;
     if (isImprovising !== undefined) this.config.isImprovising = isImprovising;
+    if (axiomHistory !== undefined) this.sessionAxiomHistory = axiomHistory;
     if (wasEmpty && this.config.cloudAxioms.length > 0 && this.config.useHeritage) {
       this.soloistBusyUntilBar = -1;
     }
@@ -292,14 +295,17 @@ export class CyberBluesBrain {
           const tension = dna.tensionMap?.[epoch] ?? 0.5;
           const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
           const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-          const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
+          
+          // #ЗАЧЕМ: Проверка глобального блэклиста фраз
+          const freshLicks = sameOffsetPool.filter(ax => !this.sessionAxiomHistory.includes(ax.id));
+          
           let selected = null;
           if (freshLicks.length > 0) {
             selected = freshLicks[this.random.nextInt(freshLicks.length)];
           } else if (sameOffsetPool.length > 0) {
             selected = sameOffsetPool[this.random.nextInt(sameOffsetPool.length)];
           } else {
-            const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
+            const anyFresh = basePool.filter(ax => !this.sessionAxiomHistory.includes(ax.id));
             selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
           }
           if (selected) {

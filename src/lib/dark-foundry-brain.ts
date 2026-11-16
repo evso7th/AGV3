@@ -68,6 +68,7 @@ export class DarkFoundryBrain {
     private currentMutationType: string = 'none';
     private microTransposition: number = 0;
     private lickHistory: string[] = [];
+    private sessionAxiomHistory: string[] = [];
     
     private lastTextureTime = -999;
 
@@ -94,11 +95,12 @@ export class DarkFoundryBrain {
         return v;
     }
 
-    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean) {
+    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean, axiomHistory?: string[]) {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (this.isImprovising !== undefined) this.isImprovising = isImprovising;
+        if (axiomHistory !== undefined) this.sessionAxiomHistory = axiomHistory;
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
     }
 
@@ -164,7 +166,7 @@ export class DarkFoundryBrain {
                 const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
                 
                 const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-                const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
+                const freshLicks = sameOffsetPool.filter(ax => !this.sessionAxiomHistory.includes(ax.id));
                 
                 let selected = null;
                 if (freshLicks.length > 0) {
@@ -172,7 +174,8 @@ export class DarkFoundryBrain {
                 } else if (sameOffsetPool.length > 0) {
                     selected = sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)];
                 } else {
-                    selected = basePool[this.rng.nextInt(basePool.length)];
+                    const anyFresh = basePool.filter(ax => !this.sessionAxiomHistory.includes(ax.id));
+                    selected = anyFresh.length > 0 ? anyFresh[this.rng.nextInt(anyFresh.length)] : basePool[this.rng.nextInt(basePool.length)];
                 }
 
                 if (selected) {

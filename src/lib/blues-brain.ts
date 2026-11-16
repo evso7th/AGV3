@@ -93,13 +93,14 @@ export class BluesBrain {
   private ensembleStatus: 'SIBLING' | 'ADAPTIVE' | 'LOCAL' = 'ADAPTIVE';
 
   private soloistBusyUntilBar: number = -1;
-  private soloistRestUntilBar: number = -1;
+  private soloistRestingUntilBar: number = -1;
 
   private currentTransposition: number = 0;
   private microTransposition: number = 0;
 
   private activeHarmonyInstrument: 'violin' | 'guitarChords' = 'guitarChords';
   private lickHistory: string[] = [];
+  private sessionAxiomHistory: string[] = [];
 
   private state: BluesCognitiveState & {
       lastMutationType: string,
@@ -176,7 +177,7 @@ export class BluesBrain {
     return v;
   }
 
-  public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[], activeAnchorId?: string | null, activeAnchorRoot?: number | null, useHeritage?: boolean, isImprovising?: boolean) {
+  public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[], activeAnchorId?: string | null, activeAnchorRoot?: number | null, useHeritage?: boolean, isImprovising?: boolean, axiomHistory?: string[]) {
       const wasEmpty = !this.config.cloudAxioms || this.config.cloudAxioms.length === 0;
       this.config.cloudAxioms = axioms;
       this.config.selectedCompositionIds = selectedCompositionIds || [];
@@ -185,6 +186,7 @@ export class BluesBrain {
       if (this.config.activeAnchorId === null) this.sessionAnchorId = null;
       if (useHeritage !== undefined) this.config.useHeritage = useHeritage;
       if (isImprovising !== undefined) this.config.isImprovising = isImprovising;
+      if (axiomHistory !== undefined) this.sessionAxiomHistory = axiomHistory;
 
       if (wasEmpty && this.config.cloudAxioms.length > 0 && this.config.useHeritage) {
           this.soloistBusyUntilBar = -1;
@@ -294,7 +296,8 @@ export class BluesBrain {
                   const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
                   
                   const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-                  const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
+                  // #ЗАЧЕМ: Проверка глобального блэклиста фраз
+                  const freshLicks = sameOffsetPool.filter(ax => !this.sessionAxiomHistory.includes(ax.id));
 
                   let selected = null;
                   if (freshLicks.length > 0) {
@@ -302,7 +305,7 @@ export class BluesBrain {
                   } else if (sameOffsetPool.length > 0) {
                       selected = sameOffsetPool[this.random.nextInt(sameOffsetPool.length)];
                   } else {
-                      const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
+                      const anyFresh = basePool.filter(ax => !this.sessionAxiomHistory.includes(ax.id));
                       selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
                   }
 
@@ -407,7 +410,7 @@ export class BluesBrain {
     }
 
     const isSoloistFree = epoch >= this.soloistBusyUntilBar;
-    if (isSoloistFree && this.soloistRestUntilBar <= epoch) {
+    if (isSoloistFree && this.soloistRestingUntilBar <= epoch) {
         if (this.random.next() < 0.08 || tension < 0.1) this.soloistRestingUntilBar = epoch + 1; 
     }
     const isSoloistResting = epoch < this.soloistRestingUntilBar;
